@@ -80,6 +80,8 @@ Use the OCA commit convention:
 ## Important Rules
 
 - NEVER squash historical commits when preparing OCA PRs
+- NEVER copy another module's source into a migration PR to satisfy CI. If a dependency has no 19.0 release, the PR ships with only its own module and CI stays red until that dependency merges and reaches PyPI. Vendoring gets the PR rejected, stalls it for months, and breaks git-aggregator with add/add conflicts
+- A migration PR touches exactly ONE module directory. Verify before pushing: `git diff --name-only upstream/19.0...HEAD | cut -d/ -f1 | sort -u` must print one name. Repo-level files (`.codecov.yml`, `.github/workflows/*`) belong in their own PR, never in a migration PR
 - When unsure if a match is a false positive (e.g. `.users` on a non-groups model), ASK the user
 - `button_draft`, stored compute side effects, `_sql_constraints`, Domain API changes, and `_search_` methods require manual review — do not auto-fix
 - `auto_join`: check field type first — One2many removes it, Many2one/Many2many renames to `bypass_search_access`

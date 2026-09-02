@@ -66,7 +66,7 @@ The agent will:
 28. [base.user_demo Removed](#28-baseuser_demo-removed)
 29. [hr.expense.sheet Removed](#29-hrexpensesheet-removed)
 30. [department_id Moved to hr.employee](#30-department_id-moved-to-hremployee)
-31. [OCA Unreleased Dependencies in CI](#31-oca-unreleased-dependencies-in-ci)
+31. [Unreleased OCA Dependencies — Do Not Vendor](#31-unreleased-oca-dependencies--do-not-vendor)
 32. [create(self, vals) → create(self, vals_list)](#32-createself-vals--createself-vals_list)
 33. [res.groups: category_id → privilege_id via res.groups.privilege](#33-resgroups-category_id--privilege_id-via-resgroupsprivilege)
 34. [ir.actions.act_window: target='inline' → target='main'](#34-iractionsact_window-targetinline--targetmain)
@@ -635,6 +635,23 @@ git push origin 19.0-mig-module_name
 - Single `[MIG] module_name: Migration to 19.0` commit on top
 - **Never squash** the historical commits
 
+### One module per PR
+
+This is the rule reviewers enforce most consistently. A migration PR must touch
+exactly one module directory — not the module plus its dependencies, not the
+module plus a `.codecov.yml` tweak, not the module plus a fix to the repo's
+shared CI workflow.
+
+```bash
+# Should print exactly one module name
+git diff --name-only upstream/19.0...HEAD | cut -d/ -f1 | sort -u
+```
+
+Anything extra gets the PR set aside rather than reviewed, and the reviewer may
+not say why for weeks. If a dependency is missing, see
+[Section 31](#31-unreleased-oca-dependencies--do-not-vendor) — the answer is to
+wait, not to bundle it. If the repo's CI needs changing, that is its own PR.
+
 ### Version bump checklist
 - `__manifest__.py`: version `18.0.x.x.x` → `19.0.1.0.0`
 - `README.rst`: update badge URLs from `18.0` to `19.0`
@@ -724,7 +741,8 @@ Use this checklist when migrating a module:
 - [ ] `base.user_demo` removed — create test users explicitly
 - [ ] `hr.expense.sheet` removed — use `hr.expense` directly
 - [ ] `department_id` moved from `res.users` to `hr.employee`
-- [ ] OCA unreleased dependencies — vendor modules + `.codecov.yml` ignore
+- [ ] OCA unreleased dependencies — do NOT vendor; ship the module alone and wait for the dependency to merge
+- [ ] PR touches exactly one module directory
 - [ ] `create(self, vals)` → `create(self, vals_list)` — handle list of vals dicts
 - [ ] `res.groups.category_id` removed → use `privilege_id` via `res.groups.privilege`
 - [ ] `target='inline'` in `ir.actions.act_window` → `target='main'`
@@ -905,42 +923,52 @@ employee = self.env["hr.employee"].create({
 
 ---
 
-## 31. OCA Unreleased Dependencies in CI
+## 31. Unreleased OCA Dependencies — Do Not Vendor
 
-When migrating module A that depends on module B, but module B's 19.0 version isn't published on PyPI yet, OCA CI will fail with:
+When migrating module A that depends on module B, and B has no 19.0 release yet, OCA CI fails at the install step, before it ever reaches your code:
 
 ```
 ERROR: Could not find a version that satisfies the requirement odoo-addon-module_b==19.0.*
+ERROR: No matching distribution found for odoo-addon-module_b==19.0.*
 ```
 
-### How to fix
+The tempting fix is to copy module B's source into your branch so CI can resolve it. **Don't.** It is the single most expensive mistake in this guide, and it is hard to undo once reviewers have seen the PR.
 
-1. **Include the dependency module's source code** in your PR branch (copy from the other repo's migration PR branch)
-2. **Add `.codecov.yml`** to exclude vendored modules from coverage analysis:
+### Why vendoring backfires
 
-```yaml
-# .codecov.yml
-coverage:
-  status:
-    project:
-      default:
-        target: auto
-    patch:
-      default:
-        target: auto
-ignore:
-  - "vendored_module_a/**"
-  - "vendored_module_b/**"
+- **Maintainers reject it.** OCA expects one module per PR. A reviewer asked to look at a 260-file diff spanning five modules — four of which belong to other repos — will not review it. Expect a `CHANGES_REQUESTED` reading roughly *"Please don't add other modules in this PR."*
+- **The PR stalls.** Nothing about it is reviewable, so it sits. Months, not days.
+- **It breaks `git-aggregator`.** Two branches that each vendor the same module produce `CONFLICT (add/add)` when aggregated. The merge aborts, leaving conflict markers inside `.py` files. Odoo then dies with a `SyntaxError` deep in the module loader, pointing nowhere near the real cause.
+- **Undoing it is surgery.** Removing the copies later means rewriting history with `git filter-branch --index-filter` across every affected branch, resolving conflicts in commits that mixed vendored files with real changes, and force-pushing over live PRs.
+
+### What to do instead
+
+Open the PR normally, with only your module in it, and let CI be red.
+
+Red CI caused by an unreleased dependency is a **normal, self-healing state**. When the dependency PR merges, the OCA bot publishes it to PyPI within hours, and the next CI run on your PR goes green with no change to your code. Observed repeatedly:
+
+```
+dependency PR merges  ->  odoo-addon-<dep> appears on PyPI  ->  your PR turns green
 ```
 
-3. **Fix `__manifest__.py` website URL** in vendored modules — OCA pre-commit checks that `website` matches the current repo URL:
+So:
 
-```python
-# If vendoring from partner-contact into l10n-thailand:
-"website": "https://github.com/OCA/l10n-thailand",  # must match target repo
+1. Open the PR with your module only.
+2. Say in the description what it is waiting on: *"Depends on #578 (`l10n_th_account_tax`); CI will stay red until that merges."*
+3. Sequence the merges — get the dependency in first, then re-run CI here.
+4. Do not add other modules to make the red go away.
+
+### There is no supported alternative
+
+`oca_dependencies.txt` no longer exists in OCA repositories for 19.0 — the CI simply runs `oca_install_addons`, which resolves everything from PyPI. There is no in-repo mechanism for declaring an unreleased dependency, which is precisely why waiting is the answer.
+
+### Check before you push
+
+```bash
+git diff --name-only <base>...<branch> | cut -d/ -f1 | sort -u
 ```
 
-**Tip:** Once the dependency module's PR is merged and published, remove the vendored copy and the `.codecov.yml` ignore entry.
+One module name should come back. If more do, your PR is carrying modules that do not belong to it.
 
 ---
 

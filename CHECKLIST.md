@@ -105,11 +105,11 @@ Copy this checklist into your PR description or use it as a reference.
 - [ ] Consider `tracking_disable=True` in test context for performance
 
 ### CI / Dependencies
-- [ ] Unreleased OCA dependencies: vendor module source + `.codecov.yml` ignore
-- [ ] Vendored module `website` in `__manifest__.py` must match target repo URL
+- [ ] Unreleased OCA dependencies: do NOT vendor the dependency into this PR — open it with your module only, note what it waits on, and let CI stay red until the dependency merges and reaches PyPI
+- [ ] PR touches exactly one module: `git diff --name-only upstream/19.0...HEAD | cut -d/ -f1 | sort -u`
 
 ## Post-migration
 
 - [ ] Run pre-commit locally
 - [ ] Single `[MIG] module_name: Migration to 19.0` commit on top of history
-- [ ] Push and verify CI passes
+- [ ] Push and verify CI passes — unless it is red only because a dependency has no 19.0 release yet, which is expected and clears itself once that dependency merges
