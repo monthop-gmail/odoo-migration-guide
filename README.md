@@ -80,6 +80,9 @@ The agent will:
 42. [product.template: type Selection Changed](#42-producttemplate-type-selection-changed)
 43. [hr.expense.sheet Workflow → hr.expense Direct](#43-hrexpensesheet-workflow--hrexpense-direct)
 44. [Dynamic Date Domains in XML](#44-dynamic-date-domains-in-xml)
+45. [name_search: args → domain](#45-name_search-args--domain)
+46. [@api.returns Removed](#46-apireturns-removed)
+47. [urljoin Moved to odoo.tools.urls](#47-urljoin-moved-to-odootoolsurls)
 
 ---
 
@@ -168,6 +171,25 @@ for move, account, debit_sum, credit_sum in results:
 2. Move aggregated fields from `fields` to `aggregates` parameter
 3. Change dict access to tuple unpacking
 4. Note: groupby fields return recordsets, not `(id, name)` tuples
+
+### Which replacement to use
+
+`_read_group()` is the internal one and returns tuples. If the call is a **public**
+one — something a client, controller or external API invokes and expects
+dict-shaped, formatted output from — use `formatted_read_group()` instead, added
+in 19.0 (`addons/web/models/models.py`). It keeps the readable output that
+`read_group()` used to give.
+
+```python
+# backend / internal code
+self.env["account.move.line"]._read_group(domain, groupby=[...], aggregates=[...])
+
+# public call that needs formatted output
+self.env["account.move.line"].formatted_read_group(domain, groupby=[...], aggregates=[...])
+```
+
+Picking `_read_group()` for a public call is not an error, but callers then have
+to unpack tuples and format values themselves.
 
 ---
 
@@ -633,7 +655,12 @@ git push origin 19.0-mig-module_name
 ### Commit structure
 - All historical commits from 18.0 preserved
 - Single `[MIG] module_name: Migration to 19.0` commit on top
-- **Never squash** the historical commits
+- **Never squash** the historical commits — the real ones, that is
+
+The OCA wiki does allow squashing *administrative* commits — the `[BOT] post-merge
+updates`, `[UPD] Update *.pot` and Weblate translation commits — into the commit
+before them, to cut noise. That is optional, and different from squashing the
+module's actual history, which is never acceptable.
 
 ### One module per PR
 
@@ -1261,6 +1288,101 @@ odoo-bin upgrade_code --script 18.5-00-domain-dynamic-dates --addons-path /path/
 ```
 
 Drop `--dry-run` to apply. Use `--from 18.1 --to 19.0` to run every 18→19 script in order. Domains the parser cannot handle are logged and left untouched — check the log and convert those by hand.
+
+---
+
+## 45. name_search: `args` → `domain`
+
+The second positional parameter of `name_search` was renamed.
+
+```python
+# 18.0
+def name_search(self, name='', args=None, operator='ilike', limit=100):
+
+# 19.0
+def name_search(self, name='', domain=None, operator='ilike', limit=100):
+```
+
+Ref: [odoo/odoo@e35bceda](https://github.com/odoo/odoo/commit/e35bcedab20048807aa3aa17dd8d1e4ea932e3d5)
+
+```python
+# 18.0
+def name_search(self, name="", args=None, operator="ilike", limit=100):
+    args = args or []
+    args += [("code", operator, name)]
+    return super().name_search(name, args, operator, limit)
+
+# 19.0
+def name_search(self, name="", domain=None, operator="ilike", limit=100):
+    domain = domain or []
+    domain += [("code", operator, name)]
+    return super().name_search(name, domain, operator, limit)
+```
+
+An override that still names the parameter `args` will silently stop receiving
+the caller's domain when called by keyword, which is how core calls it.
+
+---
+
+## 46. @api.returns Removed
+
+`@api.returns` is gone from `odoo/api.py` in 19.0. It existed to adapt a method's
+output between the traditional style (`id` / `ids` / `False`) and the record style
+(recordsets), and it was **inherited automatically** — overriding a decorated core
+method gave your override the same decoration for free.
+
+Ref: [odoo/odoo#182709](https://github.com/odoo/odoo/pull/182709)
+
+The one most modules meet is `copy()`:
+
+```python
+# 18.0 — odoo/models.py
+@api.returns('self')
+def copy(self, default=None):
+
+# 19.0 — odoo/orm/models.py
+def copy(self, default=None):
+```
+
+```python
+# 18.0 — inherited @api.returns turned a returned id into a recordset
+@api.returns("self")
+def copy(self, default=None):
+    return super().copy(default)
+
+# 19.0 — drop the decorator; return the recordset directly
+def copy(self, default=None):
+    return super().copy(default)
+```
+
+**What to check:** any override that relied on the decorator to convert its
+return value. Return the recordset itself, and make sure callers are not still
+expecting an id.
+
+---
+
+## 47. urljoin Moved to odoo.tools.urls
+
+`odoo/tools/urls.py` is new in 19.0 — it does not exist in 18.0 at all. Its
+`urljoin` handles cases the stdlib one gets wrong, notably a base URL that has a
+path component.
+
+Ref: [odoo/odoo@977e62d91f3e](https://github.com/odoo/odoo/commit/977e62d91f3e)
+
+```python
+# 18.0
+from urllib.parse import urljoin
+url = urljoin(base_url, "/my/endpoint")
+
+# 19.0
+from odoo.tools.urls import urljoin
+url = urljoin(base_url, "/my/endpoint")
+```
+
+Not a hard breaking change — `urllib.parse.urljoin` still imports and runs. But
+on a base URL like `https://example.com/odoo`, the stdlib version discards the
+`/odoo` path when the second argument starts with `/`, which is exactly the bug
+the helper exists to avoid.
 
 ---
 

@@ -885,6 +885,75 @@ rules:
       - "relativedelta/context_today inside .py files — this rule is XML domains only"
       - "context_today() in a <field name='...'> that is not domain/domain_force"
 
+  # ──────────────────────────────────────────────
+  # NAME_SEARCH ARGS -> DOMAIN
+  # ──────────────────────────────────────────────
+
+  - id: name-search-args-domain
+    title: "name_search(): args parameter renamed to domain"
+    severity: error
+    file_types: ["*.py"]
+    detect:
+      - pattern: 'def name_search\s*\([^)]*\bargs\b'
+        context: "Override still names the second parameter 'args'"
+    fix:
+      search: "args"
+      replace: "domain"
+      note: |
+        Rename the parameter and every use of it inside the override, including
+        the super() call. Core calls name_search by keyword, so an override that
+        keeps 'args' silently stops receiving the caller's domain.
+    auto_fix: false
+    reference: "https://github.com/odoo/odoo/commit/e35bcedab20048807aa3aa17dd8d1e4ea932e3d5"
+    false_positives:
+      - "A local variable named args unrelated to name_search"
+
+  # ──────────────────────────────────────────────
+  # API.RETURNS REMOVED
+  # ──────────────────────────────────────────────
+
+  - id: api-returns-removed
+    title: "@api.returns removed from odoo.api"
+    severity: error
+    file_types: ["*.py"]
+    detect:
+      - pattern: '@api\.returns'
+        context: "Decorator no longer exists in 19.0"
+    fix:
+      note: |
+        Remove the decorator. It converted a method's return value between
+        traditional style (id/ids/False) and record style, and was inherited
+        automatically by overrides. Return the recordset directly and check that
+        no caller still expects an id. Core copy() carried it in 18.0 and does
+        not in 19.0.
+    auto_fix: false
+    reference: "https://github.com/odoo/odoo/pull/182709"
+    error_message: "AttributeError: module 'odoo.api' has no attribute 'returns'"
+
+  # ──────────────────────────────────────────────
+  # URLJOIN HELPER
+  # ──────────────────────────────────────────────
+
+  - id: urljoin-odoo-tools
+    title: "urljoin: prefer odoo.tools.urls.urljoin"
+    severity: warning
+    file_types: ["*.py"]
+    detect:
+      - pattern: 'from urllib\.parse import.*urljoin'
+      - pattern: 'urllib\.parse\.urljoin'
+    fix:
+      search: "from urllib.parse import urljoin"
+      replace: "from odoo.tools.urls import urljoin"
+      note: |
+        odoo/tools/urls.py is new in 19.0. The stdlib urljoin drops the base
+        URL's path when the second argument starts with "/", which breaks
+        deployments served under a sub-path. Not a hard error — the stdlib
+        import still works.
+    auto_fix: false
+    reference: "https://github.com/odoo/odoo/commit/977e62d91f3e"
+    false_positives:
+      - "urljoin used on URLs that never have a base path component"
+
 version_bump:
   manifest:
     detect: 'version.*18\.0\.'

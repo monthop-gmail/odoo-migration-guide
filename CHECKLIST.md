@@ -32,6 +32,10 @@ Copy this checklist into your PR description or use it as a reference.
 - [ ] `self._cr` → `self.env.cr`
 - [ ] `self._uid` → `self.env.uid`
 - [ ] `from odoo import SUPERUSER_ID` → `from odoo.api import SUPERUSER_ID`
+- [ ] `name_search(self, name, args=...)` → `domain=` (rename the parameter and the `super()` call)
+- [ ] `@api.returns` removed — drop the decorator, return the recordset, check callers (core `copy()` carried it in 18.0)
+- [ ] `read_group()` public calls → `formatted_read_group()`; internal ones → `_read_group()`
+- [ ] `from urllib.parse import urljoin` → `from odoo.tools.urls import urljoin` (stdlib drops the base path on sub-path deployments)
 
 ### Domain & Expression Changes
 - [ ] `odoo.osv.expression` → `odoo.fields.Domain` / `odoo.Domain`

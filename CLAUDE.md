@@ -57,6 +57,8 @@ Run ALL checks from the `validation` section of `migration-rules.yaml`:
 - `target.*inline` in ir.actions.act_window (should be `target='main'`)
 - `product.product_category_all` (renamed to `product.product_category_goods`)
 - `product.group_discount_per_so_line` (moved to `sale.group_discount_per_so_line`)
+- `@api.returns` (decorator removed from odoo.api in 19.0)
+- `def name_search(` with a parameter named `args` (renamed to `domain`)
 
 **Needs manual review:**
 - `_search_` methods that check `operator == "="` must also handle `"in"` (optimizer rewrites `=` to `in` before search runs)
@@ -104,7 +106,7 @@ These rules have high false-positive rates — always verify model context:
 
 ## File References
 
-- `README.md` — full migration guide with explanations and code examples (44 sections)
+- `README.md` — full migration guide with explanations and code examples (47 sections)
 - `CHECKLIST.md` — copy-paste checklist for PR descriptions
 - `migration-rules.yaml` — machine-readable detection and fix patterns
 
