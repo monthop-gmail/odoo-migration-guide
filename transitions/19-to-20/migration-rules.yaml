@@ -1,0 +1,147 @@
+# Odoo 19→20 migration rules (machine-readable)
+# Schema mirrors transitions/18-to-19/migration-rules.yaml.
+# Every rule here was verified against the released 20.0.20260926 build —
+# see evidence.md for the reproducing commit/test.
+rules:
+  - id: acl-csv-renamed
+    area: security
+    severity: critical
+    auto_fix: script
+    detect: "security/ir\\.model\\.access\\.csv"
+    fix: |
+      Rename to security/ir.access.csv; merge perm_read/write/create/unlink
+      into one 'operation' column (subset of 'crud', c-r-u-d order);
+      model_id must be the model NAME (e.g. date.range), not the ir.model
+      xml-id; update the manifest's data list.
+      Loader parses the model from the filename, so the old name fails with
+      KeyError: 'ir.model.access'.
+
+  - id: ir-rule-xml-removed
+    area: security
+    severity: critical
+    auto_fix: false
+    detect: "model=[\"']ir\\.rule[\"']"
+    fix: |
+      ir.rule no longer exists. Convert to ir.access records: same model_id,
+      operation='crud' for former global rules, move domain_force to domain.
+      A group-less ir.access row is a 'restriction' (record-rule semantics).
+
+  - id: odoo-http-package-split
+    area: controllers
+    severity: critical
+    auto_fix: false
+    detect: "from odoo\\.http import[^\\n]*(content_disposition|serialize_exception)"
+    fix: |
+      odoo.http is a package. content_disposition -> odoo.http.stream,
+      serialize_exception -> odoo.http.dispatcher. request/route still
+      re-exported from odoo.http.
+
+  - id: report-file-field-removed
+    area: reports
+    severity: high
+    auto_fix: true
+    detect: "report_file"
+    fix: |
+      ir.actions.report.report_file no longer exists; remove the field from
+      data/demo XML and create() vals (ValueError: Invalid field
+      'report_file' in 'ir.actions.report').
+
+  - id: config-parameter-typed-getters
+    area: core-api
+    severity: high
+    auto_fix: false
+    detect: "\\.(get_param|set_param)\\("
+    fix: |
+      ir.config_parameter get_param/set_param removed. Use typed variants:
+      get_str/get_bool/get_int/get_float and set_str/set_bool/set_int/set_float.
+
+  - id: env-clear-deprecated
+    area: core-api
+    severity: medium
+    auto_fix: true
+    detect: "self\\.env\\.clear\\(\\)"
+    fix: |
+      Deprecated since 20.0. Use self.env.transaction.clear() (same
+      semantics). env.transaction.reset() only after commit/rollback.
+
+  - id: test-tags-default-post-install
+    area: tests
+    severity: high
+    auto_fix: false
+    detect: "class Test[A-Za-z0-9_]+\\(common\\.TransactionCase\\)"
+    fix: |
+      20.0 base test classes default to test_tags {'standard','post_install'}
+      (was at_install). Plain TransactionCase no longer runs at install.
+      Add @tagged('at_install', '-post_install') when install-time execution
+      is required.
+
+  - id: virgin-db-init-names-ignored
+    area: tests
+    severity: medium
+    auto_fix: false
+    detect: "invalid module names, ignored"
+    fix: |
+      On a virgin db, -i module names are validated against ir_module_module
+      before the addons scan is recorded. Boot twice: -i base
+      --stop-after-init, then -i <module> --test-enable.
+
+  - id: company-registry-removed
+    area: base
+    severity: critical
+    auto_fix: false
+    detect: "company_registry"
+    fix: |
+      res.partner.company_registry (and the res.company related) removed.
+      Use res.partner.additional_identifiers (Json) +
+      odoo.tools.partner_identifiers; core 20.0 ships TH_BRANCH_CODE and
+      TH_VAT identifier schemes.
+
+  - id: http-interface-default-localhost
+    area: ops
+    severity: medium
+    auto_fix: false
+    detect: "odoo(-bin)?\\s+(-d|--http-interface)|http_interface"
+    fix: |
+      --http-interface default changed from 0.0.0.0 to 127.0.0.1. Containers
+      must pass --http-interface=0.0.0.0 (or http_interface in odoo.conf) to
+      accept external connections.
+
+  - id: payment-provider-form-anchor
+    area: views
+    severity: medium
+    auto_fix: false
+    detect: "group\\[@name='payment_form'\\]"
+    fix: |
+      The payment_form group was removed from the payment provider form.
+      Anchor to //group[@name='provider_credentials'] (position=after) or
+      provider_config* on the Configuration page.
+
+  - id: website-sale-templates-moved
+    area: views
+    severity: low
+    auto_fix: false
+    detect: "website_sale\\.views\\.[a-z_]+_templates"
+    fix: |
+      website_sale QWeb files moved views/*.xml -> templates/**
+      (confirmation is now templates/checkout/confirmation_templates.xml).
+      xml ids unchanged; update file paths and docs only.
+
+  - id: ir-sequence-iso-legends
+    area: base
+    severity: low
+    auto_fix: false
+    detect: "_interpolation_dict"
+    fix: |
+      Core adds isoyear/isoy/isoweek legends in 20.0. Modules replacing the
+      interpolation dict must add them or sequences using those legends break.
+
+validation:
+  must_not_exist:
+    - "security/ir.model.access.csv"
+    - "model=\"ir.rule\""
+    - "\\.(get_param|set_param)\\("
+    - "self\\.env\\.clear\\(\\)"
+    - "company_registry"
+    - "report_file"
+  must_exist:
+    - "\"version\": \"20\\.0\\."
