@@ -121,7 +121,16 @@ enable it will see **no CABA entries and no downstream side effects** (e.g.
 payment tax invoices), with no error raised. In tests, apply the country chart
 (`AccountTestInvoicingCommon.setup_country('th')`) or set the flag explicitly.
 
-## 9. Other verified changes
+## 9. `res.partner.is_company` is now a stored compute
+
+`is_company` no longer stores whatever was written: it is computed as
+`commercial_partner_id == partner AND has_vat` (a legal-entity heuristic).
+Creating a partner with `is_company=True` in vals is silently ignored — set
+`vat` (and ensure the partner is its own commercial entity) instead. Modules
+that classify payees by `is_company` must account for VAT-less partners now
+computing as individuals.
+
+## 10. Other verified changes
 
 - **`--http-interface` default changed** `0.0.0.0` → `127.0.0.1`: containers
   running `odoo` directly stop accepting external connections unless the

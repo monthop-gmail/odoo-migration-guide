@@ -147,6 +147,18 @@ rules:
       chart must enable it (the Thai chart sets it in _get_th_res_company)
       or tests must set it / apply the country chart explicitly.
 
+  - id: is-company-stored-compute
+    area: base
+    severity: high
+    auto_fix: false
+    detect: "is_company"
+    fix: |
+      res.partner.is_company is a stored compute in 20.0:
+      commercial_partner_id == partner AND has_vat. Writing is_company=True
+      in vals is ignored — set vat (and the commercial-entity link) instead.
+      Payee classification by is_company now treats VAT-less partners as
+      individuals.
+
 validation:
   must_not_exist:
     - "security/ir.model.access.csv"
