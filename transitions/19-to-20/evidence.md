@@ -15,6 +15,7 @@ ThaiACC Odoo 20 work and the OCA-bridge migrations below.
 | `company-registry-removed` | `grep -r company_registry` on odoo 20.0 source matches only test-file names; `odoo/tools/partner_identifiers.py` defines `TH_BRANCH_CODE`/`TH_VAT` |
 | `http-interface-default-localhost` | `odoo/tools/config.py` `--http-interface my_default='127.0.0.1'` (19.0: `'0.0.0.0'`) |
 | Official baseline capabilities | `thaiacc-odoo` branch `20.0` commits `b49ad6b`, `68047a8`: official l10n_th suite 15/15 + capability checks 9/9 (`test/official_smoke_test.sh`) |
+| `caba-company-flag` | Shell probe on 20.0.20260926: on_payment purchase tax + payment reconcile produced 0 CABA entries with `company.tax_exigibility` off; `addons/account/models/account_move_line.py` `is_cash_basis_needed()` gates `_create_tax_cash_basis_moves()`; Thai chart enables it (`l10n_th/models/template_th.py` `_get_th_res_company`)
 | `env-clear-deprecated` | `l10n_th_base_sequence` test: `DeprecationWarning: Since 20.0, use transaction.clear or transaction.reset` |
 
 ## Cross-references

@@ -108,7 +108,20 @@ metadata in `odoo/tools/partner_identifiers.py`. Core 20.0 ships
 recomputations and cached properties — the same semantics). `env.transaction.reset()`
 exists for post-commit/rollback registry changes only.
 
-## 8. Other verified changes
+## 8. Cash-basis (CABA) is gated by a company flag
+
+Cash-basis journal entries for `on_payment` taxes are only generated when the
+**company** flag `res.company.tax_exigibility` ("Cash Basis" in settings) is
+enabled — `account.move.line`'s reconciliation code checks
+`any(amls.company_id.mapped('tax_exigibility'))` before calling
+`_create_tax_cash_basis_moves()`. Charts enable it during application (the
+Thai chart sets `tax_exigibility: True` in `_get_th_res_company`); a module
+testing or depending on cash-basis behavior on a company whose chart did not
+enable it will see **no CABA entries and no downstream side effects** (e.g.
+payment tax invoices), with no error raised. In tests, apply the country chart
+(`AccountTestInvoicingCommon.setup_country('th')`) or set the flag explicitly.
+
+## 9. Other verified changes
 
 - **`--http-interface` default changed** `0.0.0.0` → `127.0.0.1`: containers
   running `odoo` directly stop accepting external connections unless the

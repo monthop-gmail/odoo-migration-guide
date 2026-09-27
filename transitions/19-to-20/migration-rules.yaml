@@ -135,6 +135,18 @@ rules:
       Core adds isoyear/isoy/isoweek legends in 20.0. Modules replacing the
       interpolation dict must add them or sequences using those legends break.
 
+  - id: caba-company-flag
+    area: accounting
+    severity: high
+    auto_fix: false
+    detect: "tax_exigibility.*on_payment|_create_tax_cash_basis_moves"
+    fix: |
+      CABA entries are gated by the company flag res.company.tax_exigibility
+      ("Cash Basis" setting). on_payment taxes produce no cash-basis journal
+      entries (and no downstream side effects) when the flag is off — the
+      chart must enable it (the Thai chart sets it in _get_th_res_company)
+      or tests must set it / apply the country chart explicitly.
+
 validation:
   must_not_exist:
     - "security/ir.model.access.csv"
