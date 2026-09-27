@@ -1,8 +1,10 @@
 # Repository transition plan: `odoo-19-migration-guide` → `odoo-migration-guide`
 
-Status: **proposed — awaiting review** (per handoff ho-6db40027: "Do not delete
-or rename the current repo until a non-destructive migration plan is reviewed").
-No rename or deletion has been performed.
+Status: **APPROVED and executed** (owner decision 2026-09-27, knowledge
+discussion seq 4): Option A — GitHub rename performed on 2026-09-27.
+Old name `monthop-gmail/odoo-19-migration-guide` now 301-redirects to
+`monthop-gmail/odoo-migration-guide`; the repository object, history,
+issues and stars are unchanged.
 
 ## Goal
 

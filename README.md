@@ -5,10 +5,11 @@ modules, organized **by transition (17→18, 18→19, 19→20, 20→21)** rather
 than by target version. Consumed by humans and by AI agents (Codex,
 Claude, Cursor) so the same breaking-change knowledge reaches every repo.
 
-> This repo is under transition from `odoo-19-migration-guide` (single-version
-> 18→19 guide) to this structure. The original files were moved — with git
-> history preserved — into [`transitions/18-to-19/`](transitions/18-to-19/).
-> See [`TRANSITION-PLAN.md`](TRANSITION-PLAN.md) for the reviewed plan.
+> Renamed from `odoo-19-migration-guide` (2026-09-27, owner decision —
+> GitHub rename, history and old-URL redirects preserved). The original
+> files were moved — with git history preserved — into
+> [`transitions/18-to-19/`](transitions/18-to-19/). The executed transition
+> plan is in [`TRANSITION-PLAN.md`](TRANSITION-PLAN.md).
 
 ## Layout
 

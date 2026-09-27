@@ -32,5 +32,5 @@ Record evidence per [`evidence/README.md`](evidence/README.md).
 ## Repo transition
 
 The old single-version guide was moved (history preserved) into
-`transitions/18-to-19/`. Do not rename the repo itself before the plan in
-[`TRANSITION-PLAN.md`](TRANSITION-PLAN.md) is reviewed and approved.
+`transitions/18-to-19/`; the repo was renamed to `odoo-migration-guide`
+(owner-approved 2026-09-27, see TRANSITION-PLAN.md).
