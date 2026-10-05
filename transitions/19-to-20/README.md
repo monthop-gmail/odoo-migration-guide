@@ -130,11 +130,53 @@ Creating a partner with `is_company=True` in vals is silently ignored — set
 that classify payees by `is_company` must account for VAT-less partners now
 computing as individuals.
 
-## 10. Other verified changes
+## 10. `res.partner.company_type` removed
+
+Alongside the `is_company` change, the `company_type` selection field no
+longer exists — partner records that write it (XML/demo/tests) fail with
+`Invalid field 'company_type' in 'res.partner'` and their whole data file
+rolls back. Drop the field; classification is `is_company` only.
+
+## 11. Other verified changes
 
 - **`--http-interface` default changed** `0.0.0.0` → `127.0.0.1`: containers
   running `odoo` directly stop accepting external connections unless the
   interface is set explicitly (CLI flag or `http_interface` in odoo.conf).
+- **Demo flag on 20.0**: init defaults to demo-less; `--without-demo=False`
+  parses as a truthy string and silently disables demo. Use `--with-demo`
+  (store_true) when tests need demo records.
+- **`odoo:20` exists on Docker Hub** (from early Oct 2026): CI pipelines no
+  longer need a self-built image; the official image keeps the same
+  `/mnt/extra-addons` convention.
+- **`odoo shell` executes piped stdin twice** (observed on the 19.0 deb
+  image `19.0-20260908`): a script fed via `docker run -i ... < script.py`
+  runs a second time after the first completes, seeing its own committed
+  writes. Make shell-seeding scripts re-exec-safe (assert pre-state and
+  abort on duplicates) and commit explicitly inside the script — an
+  uncommitted run is rolled back when the shell exits.
+- **Payment-register writeoff line loses `partner_id`** on 19.0 core when
+  the payment move is created with
+  `skip_account_move_synchronization` (the `reconcile`
+  payment-difference path): downstream models with a required `partner_id`
+  (e.g. Ecosoft `account.withholding.move`) fail with NotNullViolation.
+  Fill the partner from the entry's partner when the writeoff line carries
+  none.
+- **`account.account` is a shared table in 19/20**: there is no
+  `company_id` column; per-company account codes live in the `code_store`
+  jsonb keyed by company (`code_store ->> company_id::text`). Searching
+  accounts must not filter `company_id` (Invalid field); use
+  `with_company` for the code inverse.
+- **`account.payment` has no `ref` field** in 19.0 — locating a payment by
+  reference must go through its move (`move_id`) or the reconciled line.
+- **CABA draft-reset pattern loses incremental state** (generic warning
+  for localization inheriting `_create_tax_cash_basis_moves`): resetting
+  each new cash-basis entry to draft and removing its reconciles ("clear
+  tax later") makes the NEXT partial reconcile book the full remaining tax
+  instead of its own slice when payments happen before the clear step —
+  the claimed-VAT state lives in the reconciles that were removed. Verify
+  localization engines against partial-payment cohorts before trusting
+  their CABA totals (documented for l10n_th_account_tax in
+  thaiacc-odoo `CABA-VAT-DECISION-GATE.md`).
 - **Translated fields are jsonb columns** (`account.tax.name` is
   `{"en_US": "..."}`) — mind SQL that concatenates/casts translated fields.
 - **`payment.provider` form**: `<group name="payment_form">` removed; anchor

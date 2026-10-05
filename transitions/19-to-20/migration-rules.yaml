@@ -159,6 +159,71 @@ rules:
       Payee classification by is_company now treats VAT-less partners as
       individuals.
 
+  - id: partner-company-type-removed
+    area: base
+    severity: medium
+    auto_fix: true
+    detect: "company_type"
+    fix: |
+      res.partner.company_type field removed in 20.0 (is_company became a
+      stored compute of own-commercial-entity AND has_vat). Remove
+      company_type from partner vals/XML; classification is via is_company.
+
+  - id: partner-bank-acc-number-renamed
+    area: base
+    severity: medium
+    auto_fix: true
+    detect: "acc_number"
+    fix: |
+      res.partner.bank.acc_number was renamed to account_number in 20.0
+      (sanitized_account_number remains the sanitized compute). Searching or
+      writing acc_number fails with 'Invalid field'.
+
+  - id: account-account-shared-table
+    area: account
+    severity: high
+    auto_fix: true
+    detect: "account.account"
+    fix: |
+      account.account has no company_id column in 19/20; account codes are
+      per-company via the code_store jsonb (code_store ->> company_id).
+      Remove company_id filters from account.account searches (Invalid
+      field); use with_company for the code inverse.
+
+  - id: account-payment-no-ref
+    area: account
+    severity: low
+    auto_fix: true
+    detect: "payment"
+    fix: |
+      account.payment has no ref field in 19.0; locate payments through
+      move_id or the reconciled move line instead of a ref search.
+
+  - id: payment-writeoff-partner-loss
+    area: account
+    severity: medium
+    auto_fix: false
+    detect: "write_off_line_vals"
+    fix: |
+      On 19.0 core the payment-register writeoff line is created without
+      partner_id when the payment move is built with
+      skip_account_move_synchronization; downstream required-partner models
+      fail with NotNullViolation. Fill the partner from the entry's partner
+      when the writeoff line carries none.
+
+  - id: caba-draft-reset-state-loss
+    area: account
+    severity: high
+    auto_fix: false
+    detect: "_create_tax_cash_basis_moves"
+    fix: |
+      Localization engines that reset each new cash-basis entry to draft
+      and remove its reconciles (clear-tax-later pattern) lose the
+      incremental claimed-VAT state: a later partial reconcile booked
+      before the clear step claims the full remaining tax instead of its
+      own slice. Verify against partial-payment cohorts before trusting
+      CABA totals.
+
 validation:
   must_not_exist:
     - "security/ir.model.access.csv"
