@@ -1,3 +1,178 @@
 # Odoo 15→16 migration rules (machine-readable)
-# Schema: transitions/19-to-20/migration-rules.yaml + changed_in, confidence, files, source.
-rules: []
+# Schema mirrors transitions/19-to-20/migration-rules.yaml, plus:
+#   changed_in:  Odoo series where the break lands (checked on odoo/odoo branches)
+#   confidence:  verified    = a real module failed, the fix made it pass
+#                source-only = confirmed in odoo/odoo source (and usually applied in
+#                              a real migration), but no recorded fail→pass run
+#   files:       comma-separated filename globs the detect regex is meant for
+#   detect:      Python `re` pattern, matched line by line
+# Rules are generic patterns; evidence lives in evidence.md.
+rules:
+  - id: view-render-moved-to-qweb
+    area: core-api
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: verified
+    files: '*.py'
+    detect: '\.ref\([^)\n]*\)\._render\(|\[[''"]ir\.ui\.view[''"]\][^\n]*\._render\('
+    fix: |
+      ir.ui.view._render() no longer exists (AttributeError: 'ir.ui.view'
+      object has no attribute '_render'). Render through QWeb:
+      self.env['ir.qweb']._render('module.template_xmlid', values)
+      (or view._render_template(xmlid, values)).
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/models/ir_ui_view.py  # def _render
+      - https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/models/ir_qweb.py     # def _render(template, values)
+
+  - id: fields-view-get-removed
+    area: core-api
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.py'
+    detect: '\bfields_view_get\b'
+    fix: |
+      BaseModel.fields_view_get() was removed. Override _get_view(view_id,
+      view_type, **options) to alter the arch (returns arch, view), or
+      get_views() for the combined payload. toolbar/submenu args are gone.
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/odoo/models.py   # def fields_view_get
+      - https://github.com/odoo/odoo/blob/16.0/odoo/models.py   # def get_views / def _get_view
+
+  - id: inherited-view-groups-id-forbidden
+    area: views
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.xml'
+    detect: 'name=[''"]groups_id[''"]'
+    fix: |
+      An ir.ui.view record with inherit_id may not carry groups_id
+      (ValidationError: "Inherited view cannot have 'Groups' define on the
+      record"). Move the restriction into the arch as groups="..." on the
+      added nodes. Primary (non-inherited) views, menus and actions may keep
+      groups_id — only act on hits inside inheriting view records.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/models/ir_ui_view.py  # _check_groups
+
+  - id: ir-translation-removed
+    area: data
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.py,*.xml,*.csv'
+    detect: 'ir\.translation\b|model_ir_translation\b'
+    fix: |
+      The ir.translation model is gone: translated fields are stored as
+      jsonb per language on the record itself. Drop ACL rows for
+      model_ir_translation; replace ir.translation reads/writes with
+      record.with_context(lang=...) reads/writes or update_field_translations().
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/models/ir_translation.py  # absent in 16.0
+
+  - id: stock-location-route-renamed
+    area: data
+    severity: critical
+    auto_fix: true
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.py,*.xml,*.csv'
+    detect: 'stock\.location\.route\b|model_stock_location_route\b'
+    fix: |
+      stock.location.route was renamed to stock.route (xml-id
+      stock.model_stock_route). Rename model references and ACL model ids.
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/addons/stock/models/stock_location.py  # _name = 'stock.location.route'
+      - https://github.com/odoo/odoo/blob/16.0/addons/stock/models/stock_location.py  # _name = 'stock.route'
+
+  - id: bootstrap5-data-attributes
+    area: frontend
+    severity: high
+    auto_fix: true
+    changed_in: "16.0"
+    confidence: verified
+    files: '*.xml,*.js,*.html'
+    detect: '\bdata-(toggle|target|dismiss|ride|slide|slide-to|parent|spy)='
+    fix: |
+      Bootstrap 4 → 5: data-toggle/-target/-dismiss/-ride/-slide/-parent/-spy
+      become data-bs-*. Without the prefix tabs, modals, dropdowns and
+      collapses silently stop working (no error is raised).
+    source:
+      - https://github.com/odoo/odoo/tree/15.0/addons/web/static/lib/bootstrap  # Bootstrap v4.3.1
+      - https://github.com/odoo/odoo/tree/16.0/addons/web/static/lib/bootstrap  # Bootstrap v5.1.3
+      - https://getbootstrap.com/docs/5.0/migration/
+
+  - id: bootstrap5-close-button
+    area: frontend
+    severity: medium
+    auto_fix: true
+    changed_in: "16.0"
+    confidence: verified
+    files: '*.xml,*.js,*.html'
+    detect: 'class=[''"][^''"]*(?<![-\w])close(?![-\w])'
+    fix: |
+      class="close" (with &times; content) → class="btn-close" with no
+      content; pair it with data-bs-dismiss.
+    source:
+      - https://getbootstrap.com/docs/5.0/migration/#close-button
+
+  - id: bootstrap5-renamed-utilities
+    area: frontend
+    severity: medium
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.xml,*.js,*.html,*.scss,*.css'
+    detect: '\b[mp][lr]-(?:(?:sm|md|lg|xl)-)?(?:[0-5]|auto)\b|\b(?:float|text)-(?:(?:sm|md|lg|xl)-)?(?:left|right)\b|\bbadge-(?:primary|secondary|success|danger|warning|info|light|dark|pill)\b|\b(?:form-group|form-row|custom-select|custom-control|custom-checkbox|custom-switch|input-group-append|input-group-prepend|no-gutters|sr-only|media-body)\b'
+    fix: |
+      Bootstrap 5 renamed directional utilities and dropped some components:
+      ml/mr/pl/pr-* → ms/me/ps/pe-*, float/text-left/right → -start/-end,
+      badge-<color> → text-bg-<color> (or bg-<color>), badge-pill →
+      rounded-pill, custom-select → form-select, custom-control/checkbox/
+      switch → form-check(-switch), input-group-append/prepend removed,
+      no-gutters → g-0, sr-only → visually-hidden, form-group/form-row →
+      mb-3 / row g-3, media → d-flex. Review layout visually after the change.
+      Hits in static/description/ (app-store page, not loaded by Odoo) can
+      be ignored.
+    source:
+      - https://getbootstrap.com/docs/5.0/migration/
+
+  - id: web-controllers-main-split
+    area: controllers
+    severity: low
+    auto_fix: true
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.py'
+    detect: 'odoo\.addons\.web\.controllers\.main\b|from odoo\.addons\.web\.controllers import main\b'
+    fix: |
+      addons/web/controllers/main.py was split into home.py, utils.py,
+      binary.py, dataset.py, ... and kept only as a shim that emits a
+      DeprecationWarning. Import from the new module, e.g.
+      from odoo.addons.web.controllers.utils import ensure_db,
+      from odoo.addons.web.controllers.home import Home.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/addons/web/controllers/main.py   # _MOVED_TO_MAP shim
+      - https://github.com/odoo/odoo/blob/16.0/addons/web/controllers/utils.py  # def ensure_db
+
+  - id: decimal-precision-addon-import
+    area: core-api
+    severity: critical
+    auto_fix: false
+    changed_in: "13.0 (pre-15 leftover, breaks on every target)"
+    confidence: source-only
+    files: '*.py'
+    detect: 'from odoo\.addons import decimal_precision|odoo\.addons\.decimal_precision|\bdp\.get_precision\('
+    fix: |
+      The decimal_precision addon was merged into base in 13.0, so
+      `from odoo.addons import decimal_precision as dp` raises ImportError
+      unless some addons path still ships a stub module. Drop the import
+      and pass the precision name directly: digits='Product Price'
+      (base keeps a deprecated get_precision() that only logs a warning).
+    source:
+      - https://github.com/odoo/odoo/tree/12.0/addons/decimal_precision                       # last series with the addon
+      - https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/models/decimal_precision.py  # get_precision deprecated, digits=<name>
