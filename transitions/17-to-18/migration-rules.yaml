@@ -1,0 +1,152 @@
+# Odoo 17→18 migration rules (machine-readable)
+# Schema mirrors transitions/19-to-20/migration-rules.yaml, plus:
+#   changed_in:  Odoo series where the break lands (checked on odoo/odoo branches)
+#   confidence:  verified    = a real module failed, the fix made it pass
+#                source-only = confirmed in odoo/odoo source (usually also applied
+#                              in a real migration), no recorded fail→pass run
+#   files:       comma-separated filename globs the detect regex is meant for
+#   detect:      Python `re` pattern, matched line by line
+# Rules are generic patterns; evidence lives in evidence.md.
+rules:
+  - id: tree-view-renamed-list
+    area: views
+    severity: critical
+    auto_fix: true
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.xml,*.py,*.js'
+    detect: '<tree[\s>/]|</tree>|view_mode[^\n]*\btree\b|//tree\b'
+    fix: |
+      The view type 'tree' is now 'list': <tree> → <list> (arch and
+      embedded one2many views), view_mode "tree,form" → "list,form" (XML
+      and Python action dicts), xpath //tree → //list, view type 'tree' in
+      code → 'list'.
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_ui_view.py  # type ('tree', 'Tree')
+      - https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/models/ir_ui_view.py  # type ('list', 'List')
+      - https://github.com/odoo/odoo/tree/18.0/odoo/addons/base/rng                   # tree_view.rng → list_view.rng
+
+  - id: kanban-box-to-card
+    area: views
+    severity: medium
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: verified
+    files: '*.xml'
+    detect: 't-name=[''"]kanban-box[''"]'
+    fix: |
+      <t t-name="kanban-box"> is the deprecated (legacy) kanban API; new
+      archs define <t t-name="card">. Converting removes the legacy
+      rendering context — see kanban-image-legacy-only.
+    source:
+      - https://github.com/odoo/odoo/blob/18.0/addons/web/static/src/views/kanban/kanban_arch_parser.js  # "kanban-box" is deprecated ... "card"
+
+  - id: kanban-image-legacy-only
+    area: views
+    severity: high
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: verified
+    files: '*.xml'
+    detect: '\bkanban_image\('
+    fix: |
+      kanban_image() (and user_context) exist only in legacy kanban-box
+      archs; in a card template they raise "ctx.kanban_image is not a
+      function". Use <field name="image_128" widget="image"/> or
+      t-attf-src="/web/image/<model>/#{record.id.raw_value}/<field>".
+    source:
+      - https://github.com/odoo/odoo/blob/18.0/addons/web/static/src/views/kanban/kanban_record.js  # if (isLegacyArch) kanban_image
+
+  - id: name-get-removed
+    area: models
+    severity: critical
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.py'
+    detect: 'def name_get\(|\.name_get\(\)'
+    fix: |
+      BaseModel.name_get() no longer exists (ignored for display_name since
+      17.0). Overrides → _compute_display_name; calls → record.display_name.
+    source:
+      - https://github.com/odoo/odoo/blob/18.0/odoo/models.py  # no def name_get
+
+  - id: user-has-groups-removed
+    area: core-api
+    severity: critical
+    auto_fix: true
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.py'
+    detect: '\buser_has_groups\('
+    fix: |
+      self.user_has_groups('a,b') → self.env.user.has_groups('a,b')
+      (single group: self.env.user.has_group('module.group')).
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/models.py  # def user_has_groups
+      - https://github.com/odoo/odoo/blob/18.0/odoo/models.py  # absent
+
+  - id: product-detailed-type-removed
+    area: product
+    severity: critical
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.py,*.xml,*.csv'
+    detect: '\bdetailed_type\b|type\s*(==|!=)\s*[''"]product[''"]|[''"]type[''"]\s*:\s*[''"]product[''"]'
+    fix: |
+      product.template.detailed_type is gone and type 'product' no longer
+      exists: type is 'consu' | 'service' | 'combo' and storable goods are
+      type='consu' + is_storable=True (field from the stock module).
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/addons/product/models/product_template.py  # detailed_type
+      - https://github.com/odoo/odoo/blob/18.0/addons/product/models/product_template.py  # absent
+
+  - id: check-access-rights-deprecated
+    area: core-api
+    severity: low
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.py'
+    detect: '\bcheck_access_(rights|rule)\('
+    fix: |
+      check_access_rights()/check_access_rule() are deprecated
+      (DeprecationWarning): use records.check_access(operation) to raise, or
+      records.has_access(operation) for a boolean.
+    source:
+      - https://github.com/odoo/odoo/blob/18.0/odoo/models.py  # "check_access_rights() is deprecated since 18.0"
+
+  - id: rpc-service-to-function
+    area: frontend
+    severity: high
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: verified
+    files: '*.js'
+    detect: 'useService\(\s*[''"]rpc[''"]\s*\)|rpc_service|\bjsonRpc\b|\bjsonrpc\('
+    fix: |
+      The "rpc" service (17.0 core/network/rpc_service.js) is replaced by a
+      plain function: import { rpc } from "@web/core/network/rpc";
+      rpc(route, params). Legacy ajax.jsonRpc(route, 'call', params) →
+      rpc(route, params).
+    source:
+      - https://github.com/odoo/odoo/tree/17.0/addons/web/static/src/core/network  # rpc_service.js
+      - https://github.com/odoo/odoo/blob/18.0/addons/web/static/src/core/network/rpc.js  # export function rpc
+
+  - id: ir-cron-numbercall-doall-removed
+    area: data
+    severity: critical
+    auto_fix: true
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.xml,*.py'
+    detect: 'name=[''"](numbercall|doall)[''"]|[''"](numbercall|doall)[''"]\s*:'
+    fix: |
+      ir.cron lost numbercall and doall (crons now always repeat and never
+      catch up missed runs). Remove both fields from cron data records and
+      from create()/write() vals; loading them fails with an invalid-field
+      error. Deactivate a job instead of limiting numbercall.
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_cron.py  # numbercall, doall
+      - https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/models/ir_cron.py  # absent
