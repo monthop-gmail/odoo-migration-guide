@@ -289,6 +289,46 @@ rules:
       - https://github.com/odoo/odoo/blob/19.0/addons/website/data/website_data.xml  # record id="default_website"
       - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/data/website.xml  # record id="base.default_website"
 
+  - id: toggle-active-removed
+    area: core-api
+    severity: critical
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\btoggle_active\b'
+    fix: |
+      BaseModel.toggle_active() is gone (19.0 still had it as a wrapper over
+      action_archive/action_unarchive). Archive buttons
+      name="toggle_active" type="object" fail at view validation; Python
+      calls raise AttributeError. Use two buttons action_archive /
+      action_unarchive (invisible on active), and move overrides to those
+      methods. 18-to-19 rule method-toggle-active recommends the same
+      change one version earlier.
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/orm/models.py  # def toggle_active
+      - https://github.com/odoo/odoo/blob/20.0/odoo/orm/models.py  # only action_archive / action_unarchive
+
+  - id: partner-company-name-removed
+    area: partner
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bcompany_name\b|\bcreate_company\b'
+    fix: |
+      res.partner.company_name (free-text company of an individual) and
+      the create_company() action are removed. Drop them from partner
+      form inherits and vals; link the contact to a company record via
+      parent_id instead (parent_name / commercial_company_name are the
+      read-only display fields).
+    false_positives:
+      - "company_name fields on other models (wizards, leads, custom models)"
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/res_partner.py  # company_name, def create_company
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/res_partner.py  # neither present
+
 validation:
   must_not_exist:
     - "security/ir.model.access.csv"

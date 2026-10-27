@@ -21,6 +21,8 @@ ThaiACC Odoo 20 work and the OCA-bridge migrations below.
 | `t-esc-removed` | verified — private module migration, commit `b750cdc` (kanban arch: `Forbidden owl directive used in arch`, install passed after `t-esc` → `t-out`) and commit `4c56370` (second module, same error). A log attributed this to 17→18; source shows `t-esc` still allowed in 17.0/18.0/19.0 `_validate_qweb_directive` and removed in 20.0 |
 | `stock-scrap-return-wizard-removed` | verified — private module migration, commits `06f5250` + `ea6600c` (return flow via `action_return()` / `action_return_all()`, test asserts return moves stay linked) and commit `7b28956` (ACL rows for `stock.scrap` / `stock.return.picking(.line)` dropped, install passed) |
 | `default-website-xmlid` | verified — private module migration, commit `439ce98` (`External ID not found` → `base.default_website`) |
+| `toggle-active-removed` | verified — private module migration, commit `40b70b3` (archive button in views failed install; replaced by `action_archive` / `action_unarchive`) |
+| `partner-company-name-removed` | verified — private module migration, commit `53bd2b1` (partner form inherit referenced the removed field / button; removed) |
 
 ## Cross-references
 

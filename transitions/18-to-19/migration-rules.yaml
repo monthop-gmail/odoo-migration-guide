@@ -334,6 +334,8 @@ rules:
       note: |
         Replace toggle_active() calls with action_archive() or action_unarchive().
         If overriding toggle_active, move logic to action_archive/action_unarchive.
+        Note: 19.0 still defines BaseModel.toggle_active (wrapper); the hard
+        removal is 20.0 — see 19-to-20 rule toggle-active-removed.
     auto_fix: false
     false_positives:
       - "Check if it's an override (def toggle_active) or a call (.toggle_active())"
