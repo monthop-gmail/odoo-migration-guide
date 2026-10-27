@@ -133,3 +133,20 @@ rules:
     source:
       - https://github.com/odoo/odoo/tree/17.0/addons/web/static/src/core/network  # rpc_service.js
       - https://github.com/odoo/odoo/blob/18.0/addons/web/static/src/core/network/rpc.js  # export function rpc
+
+  - id: ir-cron-numbercall-doall-removed
+    area: data
+    severity: critical
+    auto_fix: true
+    changed_in: "18.0"
+    confidence: source-only
+    files: '*.xml,*.py'
+    detect: 'name=[''"](numbercall|doall)[''"]|[''"](numbercall|doall)[''"]\s*:'
+    fix: |
+      ir.cron lost numbercall and doall (crons now always repeat and never
+      catch up missed runs). Remove both fields from cron data records and
+      from create()/write() vals; loading them fails with an invalid-field
+      error. Deactivate a job instead of limiting numbercall.
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_cron.py  # numbercall, doall
+      - https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/models/ir_cron.py  # absent

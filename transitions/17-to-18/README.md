@@ -4,7 +4,7 @@ Breaking changes for modules moving from 17.0 to 18.0, each checked against
 odoo/odoo source. Rules: [`migration-rules.yaml`](migration-rules.yaml);
 proof: [evidence.md](evidence.md); PR checklist: [CHECKLIST.md](CHECKLIST.md).
 
-> Status: seed (8 rules, 3 verified). Grown from real 15.0 ports; coming from
+> Status: seed (9 rules, 3 verified). Grown from real 15.0 ports; coming from
 > 15.0/16.0, apply `15-to-16` and `16-to-17` first.
 
 ## Highlights
@@ -20,6 +20,7 @@ proof: [evidence.md](evidence.md); PR checklist: [CHECKLIST.md](CHECKLIST.md).
 - **Products:** `detailed_type` and type `'product'` are gone →
   `type='consu'` + `is_storable=True`.
 - **JS RPC:** `useService("rpc")` → `import { rpc } from "@web/core/network/rpc"`.
+- **Crons:** `ir.cron` `numbercall` / `doall` removed — drop them from data files.
 - `check_access_rights`/`check_access_rule` deprecated → `check_access` / `has_access`.
 
 ## Checked, not changed in 18.0

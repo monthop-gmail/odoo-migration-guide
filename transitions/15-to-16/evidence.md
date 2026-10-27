@@ -18,4 +18,4 @@ A jumped three versions and its log labels many changes "18", the
 | `bootstrap5-close-button` | verified | A: commit `a27d41b` (log Fix 10) |
 | `bootstrap5-renamed-utilities` | source-only | Bootstrap 4.3.1 (15.0) → 5.1.3 (16.0) bundles; Bootstrap 5 migration guide |
 | `web-controllers-main-split` | source-only | A: `5d54993` (log §2.2, ensure_db import) |
-| `decimal-precision-addon-import` | source-only | B: original 15.0 source imports the 12.0-era addon in 4 files; the addon is absent on 13.0+ |
+| `decimal-precision-addon-import` | source-only | private module migration, commit `cab3ce1` (Migration B: import dropped in 4 files; fields already used `digits='<name>'`); `addons/decimal_precision` exists on 12.0 and is absent from 13.0 on, so the break predates 15.0 |

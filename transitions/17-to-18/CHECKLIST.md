@@ -14,6 +14,9 @@ Coming from 15.0/16.0? Run the `15-to-16` and `16-to-17` scans first.
 - [ ] `detailed_type` / type `'product'` → `type='consu'` + `is_storable`
 - [ ] `check_access_rights` / `check_access_rule` → `check_access` / `has_access`
 
+## Data
+- [ ] `ir.cron` records: no `numbercall` / `doall`
+
 ## JavaScript
 - [ ] `useService("rpc")` / `jsonRpc` → `rpc` from `@web/core/network/rpc`
 - [ ] smoke-test website pages and kanban views in the browser (JS errors
