@@ -1,3 +1,226 @@
 # Odoo 16→17 migration rules (machine-readable)
-# Schema: transitions/19-to-20/migration-rules.yaml + changed_in, confidence, files, source.
-rules: []
+# Schema mirrors transitions/19-to-20/migration-rules.yaml, plus:
+#   changed_in:  Odoo series where the break lands (checked on odoo/odoo branches)
+#   confidence:  verified    = a real module failed, the fix made it pass
+#                source-only = confirmed in odoo/odoo source (usually also applied
+#                              in a real migration), no recorded fail→pass run
+#   files:       comma-separated filename globs the detect regex is meant for
+#   detect:      Python `re` pattern, matched line by line
+# Rules are generic patterns; evidence lives in evidence.md.
+rules:
+  - id: view-attrs-states-removed
+    area: views
+    severity: critical
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.xml'
+    detect: '\s(attrs|states)=[''"]'
+    fix: |
+      View attributes attrs="{...}" and states="..." are rejected at view
+      validation ("Since 17.0, the "attrs" and "states" attributes are no
+      longer used."). Rewrite each domain as a Python expression directly on
+      the node: invisible="not field_a", readonly="state != 'draft'",
+      required="...". states="a,b" → invisible="state not in ('a', 'b')".
+      In list views use column_invisible for whole-column hiding.
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_ui_view.py  # "attrs" and "states" no longer used
+
+  - id: field-states-param-removed
+    area: models
+    severity: high
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: verified
+    files: '*.py'
+    detect: '\bstates\s*=\s*\{'
+    fix: |
+      The field parameter states={'x': [('readonly', True)]} is ignored
+      (warning "Since Odoo 17, property <field>.states is no longer
+      supported"), so the readonly/required logic silently disappears.
+      Remove it and put readonly="state in (...)" on the field in the views.
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/fields.py  # states ... no longer supported
+
+  - id: name-get-to-compute-display-name
+    area: models
+    severity: high
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py'
+    detect: 'def name_get\(|\.name_get\(\)'
+    fix: |
+      display_name is computed by _compute_display_name(); a name_get()
+      override is no longer used to build it (method removed in 18.0).
+      Replace with:
+        @api.depends(<fields used>)
+        def _compute_display_name(self):
+            for rec in self:
+                rec.display_name = ...
+      Replace callers of name_get() with record.display_name.
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/models.py  # def _compute_display_name
+      - https://github.com/odoo/odoo/blob/18.0/odoo/models.py  # no def name_get
+
+  - id: init-hooks-receive-env
+    area: install
+    severity: critical
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '__init__.py,hooks.py'
+    detect: 'def \w+\(\s*cr\s*(,\s*registry\s*)?\)\s*:'
+    fix: |
+      pre_init_hook / post_init_hook / uninstall_hook receive a single env
+      argument (16.0: pre_init(cr), post_init(cr, registry)). Change the
+      signature to (env) and use env.cr / env[...] inside. Hook names are
+      whatever the manifest declares, so check the manifest keys too.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/odoo/modules/loading.py  # pre_init(cr), post_init(cr, registry)
+      - https://github.com/odoo/odoo/blob/17.0/odoo/modules/loading.py  # pre_init(env), post_init(env)
+
+  - id: exceptions-warning-removed
+    area: core-api
+    severity: critical
+    auto_fix: true
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py'
+    detect: 'from odoo\.exceptions import[^\n]*\bWarning\b|exceptions\.Warning\b|raise Warning\('
+    fix: |
+      odoo.exceptions.Warning (a deprecated alias of UserError in 15.0/16.0)
+      no longer exists → ImportError. Use UserError.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/odoo/exceptions.py  # class Warning(UserError), deprecated
+      - https://github.com/odoo/odoo/blob/17.0/odoo/exceptions.py  # absent
+
+  - id: legacy-odoo-define-removed
+    area: frontend
+    severity: critical
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: verified
+    files: '*.js'
+    detect: '\bodoo\.define\(|\brequire\(\s*[''"]web(_tour|site)?\.'
+    fix: |
+      The legacy AMD loader (odoo.define('name', function (require) {...}))
+      is gone; 17.0's module_loader expects define(name, deps[], factory)
+      and 18.0 raises "Module dependencies should be a list of strings".
+      Convert to ES modules: /** @odoo-module **/ + import, e.g.
+      publicWidget from "@web/legacy/js/public/public_widget",
+      _t from "@web/core/l10n/translation", registry from
+      "@web/core/registry" (tours: registry.category("web_tour.tours").add).
+      For RPC see 17-to-18 rpc-service-to-function.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/addons/web/static/src/boot.js           # legacy odoo.define
+      - https://github.com/odoo/odoo/blob/17.0/addons/web/static/src/module_loader.js  # define(name, deps, factory)
+      - https://github.com/odoo/odoo/blob/18.0/addons/web/static/src/module_loader.js  # list-of-strings error
+
+  - id: flush-fnames-removed
+    area: core-api
+    severity: high
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py'
+    detect: '\.flush\('
+    fix: |
+      BaseModel.flush(fnames, records) (deprecated in 16.0) is removed. Use
+      self.env.flush_all(), Model.flush_model(fnames) or
+      records.flush_recordset(fnames).
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/odoo/models.py  # def flush(...): warnings.warn
+      - https://github.com/odoo/odoo/blob/17.0/odoo/models.py  # absent
+
+  - id: read-group-private-api-changed
+    area: core-api
+    severity: high
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py'
+    detect: 'def _read_group(_fill_results|_raw)?\(|\._read_group\('
+    fix: |
+      _read_group changed to (domain, groupby, aggregates, having, offset,
+      limit, order) returning tuples; _read_group_fill_results changed
+      signature; _read_group_raw is gone. Overrides/calls written for 16.0
+      break. Port overrides to the new signature, or override the public
+      read_group() (still present through 18.0) instead.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/odoo/models.py  # _read_group(domain, fields, groupby, ...)
+      - https://github.com/odoo/odoo/blob/17.0/odoo/models.py  # _read_group(domain, groupby=(), aggregates=(), ...)
+
+  - id: ir-default-get-private
+    area: core-api
+    severity: high
+    auto_fix: true
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py'
+    detect: '\[[''"]ir\.default[''"]\](\.sudo\(\)|\.with_\w+\([^)]*\))*\.get\('
+    fix: env['ir.default'].get(...) → env['ir.default']._get(...) (same arguments).
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/models/ir_default.py  # def get
+      - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_default.py  # def _get
+
+  - id: website-current-pricelist-private
+    area: website
+    severity: high
+    auto_fix: true
+    changed_in: "17.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bget_current_pricelist\('
+    fix: website.get_current_pricelist() → website._get_current_pricelist().
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/addons/website_sale/models/website.py  # def get_current_pricelist
+      - https://github.com/odoo/odoo/blob/17.0/addons/website_sale/models/website.py  # def _get_current_pricelist
+
+  - id: combination-info-pricelist-arg-removed
+    area: website
+    severity: critical
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: verified
+    files: '*.py'
+    detect: 'def _get_combination_info\(|_get_combination_info\([^)\n]*pricelist'
+    fix: |
+      product.template._get_combination_info() lost its pricelist argument
+      (TypeError: unexpected keyword argument 'pricelist' on product pages).
+      Drop it from overrides and super() calls; the website pricelist is
+      resolved internally.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/addons/website_sale/models/product_template.py  # ..., pricelist=False, ...
+      - https://github.com/odoo/odoo/blob/17.0/addons/website_sale/models/product_template.py  # no pricelist
+
+  - id: mail-channel-renamed
+    area: data
+    severity: critical
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py,*.xml,*.csv,*.js'
+    detect: 'mail\.channel\b|model_mail_channel\b'
+    fix: |
+      mail.channel → discuss.channel (mail.channel.member →
+      discuss.channel.member). Rename model references and ACL model ids.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/addons/mail/models/mail_channel.py
+      - https://github.com/odoo/odoo/blob/17.0/addons/mail/models/discuss/discuss_channel.py
+
+  - id: stock-move-quantity-done-removed
+    area: stock
+    severity: critical
+    auto_fix: false
+    changed_in: "17.0"
+    confidence: source-only
+    files: '*.py,*.xml,*.csv'
+    detect: '\bquantity_done\b|\breserved_availability\b|stock\.immediate\.transfer|stock_immediate_transfer'
+    fix: |
+      stock.move.quantity_done and reserved_availability are replaced by a
+      single quantity field (+ picked flag); the stock.immediate.transfer
+      wizard is gone. Rework views/code that read or set these.
+    source:
+      - https://github.com/odoo/odoo/blob/16.0/addons/stock/models/stock_move.py  # quantity_done, reserved_availability
+      - https://github.com/odoo/odoo/blob/17.0/addons/stock/models/stock_move.py  # quantity
