@@ -18,6 +18,9 @@ ThaiACC Odoo 20 work and the OCA-bridge migrations below.
 | `caba-company-flag` | Shell probe on 20.0.20260926: on_payment purchase tax + payment reconcile produced 0 CABA entries with `company.tax_exigibility` off; `addons/account/models/account_move_line.py` `is_cash_basis_needed()` gates `_create_tax_cash_basis_moves()`; Thai chart enables it (`l10n_th/models/template_th.py` `_get_th_res_company`)
 | `is-company-stored-compute` | ThaiACC `l10n_th_pnd_report` test: partner created with `is_company=True` classified as individual; `odoo/addons/base/models/res_partner.py` `_compute_is_company` (commercial_partner_id == partner AND has_vat)
 | `env-clear-deprecated` | `l10n_th_base_sequence` test: `DeprecationWarning: Since 20.0, use transaction.clear or transaction.reset` |
+| `t-esc-removed` | verified — private module migration, commit `b750cdc` (kanban arch: `Forbidden owl directive used in arch`, install passed after `t-esc` → `t-out`) and commit `4c56370` (second module, same error). A log attributed this to 17→18; source shows `t-esc` still allowed in 17.0/18.0/19.0 `_validate_qweb_directive` and removed in 20.0 |
+| `stock-scrap-return-wizard-removed` | verified — private module migration, commits `06f5250` + `ea6600c` (return flow via `action_return()` / `action_return_all()`, test asserts return moves stay linked) and commit `7b28956` (ACL rows for `stock.scrap` / `stock.return.picking(.line)` dropped, install passed) |
+| `default-website-xmlid` | verified — private module migration, commit `439ce98` (`External ID not found` → `base.default_website`) |
 
 ## Cross-references
 

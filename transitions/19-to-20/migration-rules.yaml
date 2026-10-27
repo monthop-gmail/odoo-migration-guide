@@ -224,6 +224,71 @@ rules:
       own slice. Verify against partial-payment cohorts before trusting
       CABA totals.
 
+  # --- Follow-ups from private module migrations (changed_in/confidence/
+  # source/files as in 16-to-17; versions checked on odoo/odoo 19.0/20.0) ---
+
+  - id: t-esc-removed
+    area: views
+    severity: critical
+    auto_fix: true
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.xml'
+    detect: '\bt-esc='
+    fix: |
+      t-esc is gone in 20.0 (deprecated with a warning in 19.0). Replace
+      t-esc="expr" with t-out="expr" (same escaping).
+      Kanban/form archs: ir.ui.view._validate_qweb_directive no longer
+      allows it ("Forbidden owl directive used in arch", install fails).
+      QWeb templates/reports: there is no esc directive any more; the
+      attribute is logged as "Unknown directives or unused attributes" and
+      the value is silently not rendered.
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/ir_ui_view.py  # _validate_qweb_directive allows t-esc
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/ir_ui_view.py  # t-esc dropped from allow-list
+      - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/ir_qweb.py  # _compile_directive_esc (deprecated)
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/ir_qweb.py  # no _compile_directive_esc
+
+  - id: stock-scrap-return-wizard-removed
+    area: stock
+    severity: critical
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml,*.csv'
+    detect: 'stock\.return\.picking|stock_return_picking|\bstock\.scrap\b|model_stock_scrap\b'
+    fix: |
+      Models stock.return.picking / stock.return.picking.line and
+      stock.scrap no longer exist (removed, not renamed).
+      Returns: call stock.picking.action_return() (creates the return
+      picking and opens it); call action_return_all() on the return to
+      pre-fill the original done quantities, as the old wizard did.
+      Defaults hook: stock.picking._prepare_return_picking_default_values.
+      Scrap: a scrap is a stock.move with is_scrap=True
+      (stock.move._action_scrap). Drop ACL rows, views and inherits that
+      reference the removed models (install fails on unknown model).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/wizard/stock_picking_return.py
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/models/stock_scrap.py
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_picking.py  # def action_return / action_return_all
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_move.py  # is_scrap, _action_scrap
+
+  - id: default-website-xmlid
+    area: website
+    severity: high
+    auto_fix: true
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bwebsite\.default_website\b'
+    fix: |
+      The website model lives in base on 20.0 and the default record is
+      base.default_website (was website.default_website). Update ref=,
+      env.ref() and eval="ref(...)" (install fails: External ID not found).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/website/data/website_data.xml  # record id="default_website"
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/data/website.xml  # record id="base.default_website"
+
 validation:
   must_not_exist:
     - "security/ir.model.access.csv"
