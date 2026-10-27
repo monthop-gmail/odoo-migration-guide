@@ -150,3 +150,21 @@ rules:
     source:
       - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_cron.py  # numbercall, doall
       - https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/models/ir_cron.py  # absent
+
+  - id: http-routing-slug-moved
+    area: website
+    severity: critical
+    auto_fix: true
+    changed_in: "18.0"
+    confidence: verified
+    files: '*.py'
+    detect: 'http_routing\.models\.ir_http import[^\n]*\b(slug|unslug|unslug_url)\b'
+    fix: |
+      The module-level slug/unslug/unslug_url helpers are gone from
+      odoo.addons.http_routing.models.ir_http (ImportError). Use the
+      ir.http class methods: env['ir.http']._slug(record),
+      env['ir.http']._unslug(value), env['ir.http']._unslug_url(url)
+      (request.env in controllers).
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/addons/http_routing/models/ir_http.py  # def slug / unslug (module level)
+      - https://github.com/odoo/odoo/blob/18.0/addons/http_routing/models/ir_http.py  # IrHttp._slug / _unslug / _unslug_url

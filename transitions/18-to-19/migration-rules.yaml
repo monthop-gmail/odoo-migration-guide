@@ -334,6 +334,8 @@ rules:
       note: |
         Replace toggle_active() calls with action_archive() or action_unarchive().
         If overriding toggle_active, move logic to action_archive/action_unarchive.
+        Note: 19.0 still defines BaseModel.toggle_active (wrapper); the hard
+        removal is 20.0 — see 19-to-20 rule toggle-active-removed.
     auto_fix: false
     false_positives:
       - "Check if it's an override (def toggle_active) or a call (.toggle_active())"
@@ -953,6 +955,59 @@ rules:
     reference: "https://github.com/odoo/odoo/commit/977e62d91f3e"
     false_positives:
       - "urljoin used on URLs that never have a base path component"
+
+  # ──────────────────────────────────────────────
+  # Follow-ups from private module migrations (changed_in/confidence/source
+  # added; versions checked on odoo/odoo 18.0/19.0; evidence in evidence.md)
+  # ──────────────────────────────────────────────
+
+  - id: product-search-location-context
+    title: "Product search view context location/warehouse → search_location/search_warehouse"
+    area: stock
+    severity: info
+    changed_in: "19.0"
+    confidence: source-only
+    file_types: ["*.xml"]
+    detect:
+      - pattern: "context=\"\\{'(location|warehouse)':\\s*self\\}\""
+    fix:
+      note: |
+        Core stock product search views switched the location/warehouse
+        search fields to context="{'search_location': self}" /
+        "{'search_warehouse': self}" with filter_domain="[]". The model
+        still reads the old keys (location / warehouse_id) as a fallback,
+        so this is alignment, not a crash; copy the core field definition
+        when a custom search view mirrors it. The old 'warehouse' key was
+        never read by the 18.0+ model (it reads warehouse_id).
+    auto_fix: true
+    source:
+      - "https://github.com/odoo/odoo/blob/18.0/addons/stock/views/product_views.xml  # context=\"{'location': self}\""
+      - "https://github.com/odoo/odoo/blob/19.0/addons/stock/views/product_views.xml  # search_location / search_warehouse"
+      - "https://github.com/odoo/odoo/blob/19.0/addons/stock/models/product.py  # location or search_location"
+
+  - id: sale-confirm-no-customer-follower
+    title: "sale.order.action_confirm no longer subscribes the customer"
+    area: sale
+    severity: warning
+    changed_in: "19.0"
+    confidence: verified
+    file_types: ["*.py", "*.xml"]
+    detect:
+      - pattern: 'message_partner_ids'
+    fix:
+      note: |
+        18.0 action_confirm subscribed order.partner_id as a follower;
+        19.0 removed that loop. Record rules, portal access checks and
+        tests that grant access through message_partner_ids (follower-based
+        portal access) silently stop matching confirmed orders. Base the
+        domain on the customer (partner_id / commercial partner) instead,
+        or subscribe explicitly where followers are really wanted.
+    auto_fix: false
+    false_positives:
+      - "message_partner_ids used for notification recipients, not access"
+    source:
+      - "https://github.com/odoo/odoo/blob/18.0/addons/sale/models/sale_order.py  # action_confirm: message_subscribe([order.partner_id.id])"
+      - "https://github.com/odoo/odoo/blob/19.0/addons/sale/models/sale_order.py  # no message_subscribe"
 
 version_bump:
   manifest:

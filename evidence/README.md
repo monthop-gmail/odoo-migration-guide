@@ -15,10 +15,10 @@ reference.
 
 ## Index
 
-- 15→16: `transitions/15-to-16/evidence.md` (11 rules, 3 verified; versions checked on odoo/odoo 15.0/16.0)
-- 16→17: `transitions/16-to-17/evidence.md` (13 rules, 4 verified; checked on 16.0/17.0)
-- 17→18: `transitions/17-to-18/evidence.md` (9 rules, 3 verified; checked on 17.0/18.0)
-- 18→19: `transitions/18-to-19/README.md` (built from real OCA CI failures)
+- 15→16: `transitions/15-to-16/evidence.md` (14 rules, 6 verified; versions checked on odoo/odoo 15.0/16.0)
+- 16→17: `transitions/16-to-17/evidence.md` (14 rules, 5 verified; checked on 16.0/17.0)
+- 17→18: `transitions/17-to-18/evidence.md` (10 rules, 4 verified; checked on 17.0/18.0)
+- 18→19: `transitions/18-to-19/README.md` (built from real OCA CI failures); later private-migration rules in `transitions/18-to-19/evidence.md`
 - 19→20: `transitions/19-to-20/evidence.md` (verified on 20.0.20260926)
 
 `confidence: verified` = a real module failed and the fix made it pass;

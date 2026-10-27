@@ -13,6 +13,8 @@ rules:
       into one 'operation' column (subset of 'crud', c-r-u-d order);
       model_id must be the model NAME (e.g. date.range), not the ir.model
       xml-id; update the manifest's data list.
+      Look the model name up (ir.model) instead of turning every '_' of the
+      xml-id into '.': model_ir_config_parameter is ir.config_parameter.
       Loader parses the model from the filename, so the old name fails with
       KeyError: 'ir.model.access'.
 
@@ -223,6 +225,152 @@ rules:
       before the clear step claims the full remaining tax instead of its
       own slice. Verify against partial-payment cohorts before trusting
       CABA totals.
+
+  # --- Follow-ups from private module migrations (changed_in/confidence/
+  # source/files as in 16-to-17; versions checked on odoo/odoo 19.0/20.0) ---
+
+  - id: t-esc-removed
+    area: views
+    severity: critical
+    auto_fix: true
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.xml'
+    detect: '\bt-esc='
+    fix: |
+      t-esc is gone in 20.0 (deprecated with a warning in 19.0). Replace
+      t-esc="expr" with t-out="expr" (same escaping).
+      Kanban/form archs: ir.ui.view._validate_qweb_directive no longer
+      allows it ("Forbidden owl directive used in arch", install fails).
+      QWeb templates/reports: there is no esc directive any more; the
+      attribute is logged as "Unknown directives or unused attributes" and
+      the value is silently not rendered.
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/ir_ui_view.py  # _validate_qweb_directive allows t-esc
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/ir_ui_view.py  # t-esc dropped from allow-list
+      - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/ir_qweb.py  # _compile_directive_esc (deprecated)
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/ir_qweb.py  # no _compile_directive_esc
+
+  - id: stock-scrap-return-wizard-removed
+    area: stock
+    severity: critical
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml,*.csv'
+    detect: 'stock\.return\.picking|stock_return_picking|\bstock\.scrap\b|model_stock_scrap\b'
+    fix: |
+      Models stock.return.picking / stock.return.picking.line and
+      stock.scrap no longer exist (removed, not renamed).
+      Returns: call stock.picking.action_return() (creates the return
+      picking and opens it); call action_return_all() on the return to
+      pre-fill the original done quantities, as the old wizard did.
+      Defaults hook: stock.picking._prepare_return_picking_default_values.
+      Scrap: a scrap is a stock.move with is_scrap=True
+      (stock.move._action_scrap). Drop ACL rows, views and inherits that
+      reference the removed models (install fails on unknown model).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/wizard/stock_picking_return.py
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/models/stock_scrap.py
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_picking.py  # def action_return / action_return_all
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_move.py  # is_scrap, _action_scrap
+
+  - id: default-website-xmlid
+    area: website
+    severity: high
+    auto_fix: true
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bwebsite\.default_website\b'
+    fix: |
+      The website model lives in base on 20.0 and the default record is
+      base.default_website (was website.default_website). Update ref=,
+      env.ref() and eval="ref(...)" (install fails: External ID not found).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/website/data/website_data.xml  # record id="default_website"
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/data/website.xml  # record id="base.default_website"
+
+  - id: toggle-active-removed
+    area: core-api
+    severity: critical
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\btoggle_active\b'
+    fix: |
+      BaseModel.toggle_active() is gone (19.0 still had it as a wrapper over
+      action_archive/action_unarchive). Archive buttons
+      name="toggle_active" type="object" fail at view validation; Python
+      calls raise AttributeError. Use two buttons action_archive /
+      action_unarchive (invisible on active), and move overrides to those
+      methods. 18-to-19 rule method-toggle-active recommends the same
+      change one version earlier.
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/orm/models.py  # def toggle_active
+      - https://github.com/odoo/odoo/blob/20.0/odoo/orm/models.py  # only action_archive / action_unarchive
+
+  - id: partner-company-name-removed
+    area: partner
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bcompany_name\b|\bcreate_company\b'
+    fix: |
+      res.partner.company_name (free-text company of an individual) and
+      the create_company() action are removed. Drop them from partner
+      form inherits and vals; link the contact to a company record via
+      parent_id instead (parent_name / commercial_company_name are the
+      read-only display fields).
+    false_positives:
+      - "company_name fields on other models (wizards, leads, custom models)"
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/res_partner.py  # company_name, def create_company
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/res_partner.py  # neither present
+
+  - id: stock-move-uom-renamed
+    area: stock
+    severity: critical
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bproduct_uom\b'
+    fix: |
+      stock.move.product_uom -> uom_id (also in create vals, domains,
+      related/depends paths, view xpaths). stock.move.line.product_uom_id
+      -> uom_id as well (source-only). Unknown field errors at install or
+      KeyError in vals otherwise. On 19.0 both still had the old names.
+    false_positives:
+      - "product_uom on other models; product_uom_id on sale.order.line (renamed in 18-to-19) stays"
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/models/stock_move.py  # product_uom
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_move.py  # uom_id
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_move_line.py  # uom_id
+
+  - id: pricelist-compute-price-renamed
+    area: product
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: "\\bpercent_price\\b|compute_price[^\\n]*['\">](percentage|formula)['\"<]"
+    fix: |
+      product.pricelist.item compute_price selection is now
+      fixed / discount / markup (19.0: fixed / percentage / formula).
+      'percentage' + percent_price -> 'discount' + price_discount (same
+      math: % off the base price). 'formula' is gone: 'discount' and
+      'markup' both keep base, price_surcharge, price_round and the
+      margins; price_markup is the inverse of price_discount. Review
+      formula items by hand. Data XML with the old values fails install
+      (invalid selection value).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/product/models/product_pricelist_item.py  # percentage / formula, percent_price
+      - https://github.com/odoo/odoo/blob/20.0/addons/product/models/product_pricelist_item.py  # discount / markup, price_discount
 
 validation:
   must_not_exist:
