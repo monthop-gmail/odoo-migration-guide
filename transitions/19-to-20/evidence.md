@@ -6,7 +6,7 @@ ThaiACC Odoo 20 work and the OCA-bridge migrations below.
 
 | Rule | Reproduced by |
 |---|---|
-| `acl-csv-renamed` + `ir-rule-xml-removed` | OCA/server-ux `date_range` migration: `KeyError: 'ir.model.access'`, then CSV/XML conversion — branch `20.0-mig-date_range`, commit `1c4a46b` + rule conversion commit; 27 tests passed |
+| `acl-csv-renamed` + `ir-rule-xml-removed` | OCA/server-ux `date_range` migration: `KeyError: 'ir.model.access'`, then CSV/XML conversion — branch `20.0-mig-date_range`, commit `1c4a46b` + rule conversion commit; 27 tests passed |; private module migration, commits `805680d` (CSV + 46 `ir.rule` → `security/ir.access.csv`) and `7b28956` (xml-id `model_ir_config_parameter` had been converted to `ir.config.parameter` by turning every `_` into `.`; the model is `ir.config_parameter`. Rows for models removed in 20.0 dropped)
 | `odoo-http-package-split` | OCA/reporting-engine `report_xlsx` / `report_xlsx_helper` migrations: `ImportError: cannot import name 'content_disposition'` — branches `20.0-mig-report_xlsx` (commit `[FIX] report_xlsx: adapt controller imports`) and `20.0-mig-report_xlsx_helper` |
 | `report-file-field-removed` | `report_xlsx` demo + tests: `ValueError: Invalid field 'report_file' in 'ir.actions.report'` — fixed in same branch; 6+3 tests passed after |
 | `config-parameter-typed-getters` | OCA partner-contact `partner_firstname`: `AttributeError: 'ir.config_parameter' object has no attribute 'get_param'` in post-init hook — branch `20.0-mig-partner_firstname` |

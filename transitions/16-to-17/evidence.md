@@ -22,11 +22,12 @@ versions and its log attributes changes to "18".
 | `legacy-odoo-define-removed` | verified | A: commit `11dccf9` — `UncaughtClientError: Module dependencies should be a list of strings` on 18.0, fixed by ES-module conversion (log Fix 5) |
 | `flush-fnames-removed` | source-only | A: `5d54993` (log §2.1) |
 | `read-group-private-api-changed` | source-only | A: `5d54993` (log §2.1: fill-results overrides dropped) |
-| `ir-default-get-private` | source-only | A: `5d54993` (log §2.1); private module migration, commit `92200d6` (Migration B, 7 calls in 4 files) |
+| `ir-default-get-private` | source-only | A: `5d54993` (log §2.1); private module migration, commit `92200d6` (Migration B, 7 calls in 4 files). Migration B's log files this under "19→20"; source shows 16.0 `def get` and 17.0–20.0 `def _get` only, so the rule stays in 16→17 and no 19→20 rule is added |
 | `website-current-pricelist-private` | verified | A: commit `dc5b87e` — shop pages broken, fixed by the rename |
 | `combination-info-pricelist-arg-removed` | verified | A: commit `e487380` — `TypeError: ... unexpected keyword argument 'pricelist'` on every product page, fixed (log Fix 4). The log says "18"; source shows the argument was already gone in 17.0. |
 | `mail-channel-renamed` | source-only | A: `5d54993` (log §4, ACL row) |
 | `stock-move-quantity-done-removed` | source-only | A: `5d54993` (log §3.4/§4) |
+| `sale-pricelist-optional` | verified | private module migration, commit `c12fea0` (invoice creation: `NotNullViolation` on currency when the order had no pricelist; fixed by reading `sale.order.currency_id`) and commit `b7b4b10` (wizard currency related to the order). The log says "19→20"; source shows `required=True` dropped in 17.0 |
 
 Detect hit counts against the two original 15.0 sources are in the PR
 description of `transitions/15-to-17`.

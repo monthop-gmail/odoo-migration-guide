@@ -13,6 +13,8 @@ rules:
       into one 'operation' column (subset of 'crud', c-r-u-d order);
       model_id must be the model NAME (e.g. date.range), not the ir.model
       xml-id; update the manifest's data list.
+      Look the model name up (ir.model) instead of turning every '_' of the
+      xml-id into '.': model_ir_config_parameter is ir.config_parameter.
       Loader parses the model from the filename, so the old name fails with
       KeyError: 'ir.model.access'.
 
