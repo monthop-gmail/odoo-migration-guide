@@ -15,7 +15,12 @@ reference.
 
 ## Index
 
+- 15→16: `transitions/15-to-16/evidence.md` (10 rules, 3 verified; versions checked on odoo/odoo 15.0/16.0)
+- 16→17: `transitions/16-to-17/evidence.md` (13 rules, 4 verified; checked on 16.0/17.0)
+- 17→18: `transitions/17-to-18/evidence.md` (8 rules, 3 verified; checked on 17.0/18.0)
 - 18→19: `transitions/18-to-19/README.md` (built from real OCA CI failures)
 - 19→20: `transitions/19-to-20/evidence.md` (verified on 20.0.20260926)
-- 17→18: to be reconstructed incrementally — add the first row when a real
-  17→18 case surfaces
+
+`confidence: verified` = a real module failed and the fix made it pass;
+`source-only` = confirmed in odoo/odoo source, no recorded fail→pass run.
+Private-module evidence is cited by commit SHA only — never copy vendor code.
