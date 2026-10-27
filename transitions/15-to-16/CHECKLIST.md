@@ -11,6 +11,7 @@ Copy into your PR description. Machine-readable rules: `migration-rules.yaml`.
 ## Data / security
 - [ ] no `ir.translation` usage / ACL rows
 - [ ] `stock.location.route` → `stock.route`
+- [ ] product search views: no `pricelist_id` (context `pricelist`) field
 - [ ] inheriting view records: `groups_id` → `groups=` in the arch
 
 ## Website / frontend (Bootstrap 5)

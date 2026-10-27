@@ -4,7 +4,7 @@ Breaking changes for modules moving from 15.0 to 16.0, each checked against
 odoo/odoo source. Rules: [`migration-rules.yaml`](migration-rules.yaml);
 proof: [evidence.md](evidence.md); PR checklist: [CHECKLIST.md](CHECKLIST.md).
 
-> Status: seed (10 rules, 3 verified). Grown from two real 15.0 ports.
+> Status: seed (11 rules, 3 verified). Grown from two real 15.0 ports.
 
 ## Highlights
 
@@ -16,6 +16,7 @@ proof: [evidence.md](evidence.md); PR checklist: [CHECKLIST.md](CHECKLIST.md).
   view record may not carry `groups_id` (use `groups=` inside the arch).
 - **Models removed/renamed:** `ir.translation` (translations are jsonb on the
   record), `stock.location.route` → `stock.route`.
+- product search views: the `pricelist_id` helper field on `product.template` is gone.
 - `odoo.addons.web.controllers.main` is a deprecated shim → import from
   `home`, `utils`, ... .
 - Pre-15 leftover worth scanning for: `odoo.addons.decimal_precision`

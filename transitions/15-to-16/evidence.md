@@ -19,3 +19,4 @@ A jumped three versions and its log labels many changes "18", the
 | `bootstrap5-renamed-utilities` | source-only | Bootstrap 4.3.1 (15.0) → 5.1.3 (16.0) bundles; Bootstrap 5 migration guide |
 | `web-controllers-main-split` | source-only | A: `5d54993` (log §2.2, ensure_db import) |
 | `decimal-precision-addon-import` | source-only | private module migration, commit `cab3ce1` (Migration B: import dropped in 4 files; fields already used `digits='<name>'`); `addons/decimal_precision` exists on 12.0 and is absent from 13.0 on, so the break predates 15.0 |
+| `product-template-pricelist-search-field-removed` | source-only | private module migration, commit `304e7e0` (Migration B, product search view); A: `5d54993` (log §3.5, removed from search filters); 15.0 vs 16.0 `product_template.py` |

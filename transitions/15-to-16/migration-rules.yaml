@@ -176,3 +176,22 @@ rules:
     source:
       - https://github.com/odoo/odoo/tree/12.0/addons/decimal_precision                       # last series with the addon
       - https://github.com/odoo/odoo/blob/15.0/odoo/addons/base/models/decimal_precision.py  # get_precision deprecated, digits=<name>
+
+  - id: product-template-pricelist-search-field-removed
+    area: views
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: source-only
+    files: '*.xml'
+    detect: 'name=[''"]pricelist_id[''"][^>]*context=[''"]\{\s*[''"]pricelist[''"]'
+    fix: |
+      product.template lost its non-stored pricelist_id search helper field
+      (15.0 used it as <field name="pricelist_id" context="{'pricelist': self}">
+      in product search views to show prices for a pricelist). Remove the
+      field from product.template/product.product search views; a view
+      referencing it fails validation (field does not exist).
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/addons/product/models/product_template.py  # pricelist_id = fields.Many2one(...)
+      - https://github.com/odoo/odoo/blob/16.0/addons/product/models/product_template.py  # absent
+

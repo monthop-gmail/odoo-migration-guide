@@ -22,7 +22,7 @@ versions and its log attributes changes to "18".
 | `legacy-odoo-define-removed` | verified | A: commit `11dccf9` — `UncaughtClientError: Module dependencies should be a list of strings` on 18.0, fixed by ES-module conversion (log Fix 5) |
 | `flush-fnames-removed` | source-only | A: `5d54993` (log §2.1) |
 | `read-group-private-api-changed` | source-only | A: `5d54993` (log §2.1: fill-results overrides dropped) |
-| `ir-default-get-private` | source-only | A: `5d54993` (log §2.1) |
+| `ir-default-get-private` | source-only | A: `5d54993` (log §2.1); private module migration, commit `92200d6` (Migration B, 7 calls in 4 files) |
 | `website-current-pricelist-private` | verified | A: commit `dc5b87e` — shop pages broken, fixed by the rename |
 | `combination-info-pricelist-arg-removed` | verified | A: commit `e487380` — `TypeError: ... unexpected keyword argument 'pricelist'` on every product page, fixed (log Fix 4). The log says "18"; source shows the argument was already gone in 17.0. |
 | `mail-channel-renamed` | source-only | A: `5d54993` (log §4, ACL row) |
