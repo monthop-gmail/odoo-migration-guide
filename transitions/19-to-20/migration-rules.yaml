@@ -32,11 +32,14 @@ rules:
     area: controllers
     severity: critical
     auto_fix: false
-    detect: "from odoo\\.http import[^\\n]*(content_disposition|serialize_exception)"
+    detect: "from odoo\\.http import[^\\n]*(content_disposition|serialize_exception|\\broot\\b)|\\bhttp\\.root\\b|\\broot\\.session_store\\b"
     fix: |
       odoo.http is a package. content_disposition -> odoo.http.stream,
       serialize_exception -> odoo.http.dispatcher. request/route still
-      re-exported from odoo.http.
+      re-exported from odoo.http. odoo.http.root is not exported any more:
+      root.session_store -> odoo.http.session.session_store() (a cached
+      function; new()/save()/get()/delete() unchanged) — scripts creating
+      test sessions in odoo shell fail with ImportError otherwise.
 
   - id: report-file-field-removed
     area: reports
@@ -371,6 +374,117 @@ rules:
     source:
       - https://github.com/odoo/odoo/blob/19.0/addons/product/models/product_pricelist_item.py  # percentage / formula, percent_price
       - https://github.com/odoo/odoo/blob/20.0/addons/product/models/product_pricelist_item.py  # discount / markup, price_discount
+
+  - id: product-tracking-none-removed
+    area: stock
+    severity: critical
+    auto_fix: true
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: "tracking[\"']?\\s*[:=!]=?\\s*[\"']none[\"']"
+    fix: |
+      product.template.tracking lost its 'none' value: selection is lot /
+      serial, False means tracked by quantity only. Writing 'none' fails
+      (invalid selection value, e.g. fixture create at install); comparing
+      tracking != 'none' is now always true. Use False / `not product.tracking`.
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/models/product.py  # ('none', 'By Quantity')
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/product.py  # lot / serial only
+
+  - id: purchase-prepare-picking-removed
+    area: purchase
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py'
+    detect: "def _prepare_picking\\("
+    fix: |
+      purchase.order._prepare_picking() is gone: _create_picking() creates
+      the moves and stock.move._assign_picking() creates the receipt. An
+      override adding picking values is never called (no error) — move it to
+      stock.move._get_new_picking_values() (read self.purchase_line_id.order_id).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/purchase_stock/models/purchase_order.py  # def _prepare_picking
+      - https://github.com/odoo/odoo/blob/20.0/addons/purchase_stock/models/purchase_order.py  # _create_picking via moves
+
+  - id: public-read-group-new-signature
+    area: orm
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.js'
+    detect: "\\bread_group\\b"
+    fix: |
+      Public read_group() now has the aggregate signature
+      read_group(domain, groupby, aggregates, having, offset, limit, order)
+      and returns tuples. The 19.0 dict API read_group(domain, fields,
+      groupby) — including over RPC — fails ("Aggregate method is mandatory
+      for 'x'"). Use formatted_read_group(domain, groupby, aggregates) for
+      dicts (count: '__count'), _read_group in server code.
+    false_positives:
+      - "_read_group / web_read_group / formatted_read_group (only bare read_group calls)"
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/orm/models.py  # def read_group(self, domain, fields, groupby, ...)
+      - https://github.com/odoo/odoo/blob/20.0/odoo/orm/models.py  # def read_group(self, domain, groupby, aggregates, ...)
+
+  - id: registry-clear-cache-removed
+    area: orm
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py'
+    detect: "registry\\.(clear_cache|clear_all_caches|signal_changes)\\("
+    fix: |
+      Registry.clear_cache() / clear_all_caches() / signal_changes() are
+      gone; caches live on the transaction: env.transaction.invalidate_ormcache()
+      (cache 'default', or a name), and the change is signalled to other
+      workers at commit. Invalidate BEFORE env.cr.commit(). Access caches:
+      env.transaction.invalidate_access_cache().
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/odoo/orm/registry.py  # def clear_cache
+      - https://github.com/odoo/odoo/blob/20.0/odoo/orm/environments.py  # Transaction.invalidate_ormcache, signalling at commit
+
+  - id: ir-rule-compute-domain-removed
+    area: security
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py'
+    detect: "ir\\.rule[\"']\\]\\._compute_domain|_compute_domain\\("
+    fix: |
+      With ir.rule gone, ir.rule._compute_domain() is gone. Model._access_domain(operation)
+      gives permissions OR-ed AND restrictions for the current user. For
+      "rule scope without the ACL grant" (what code calling _compute_domain
+      on a model the user has no ACL for usually meant), AND only the
+      group-less rows: ir.access._get_all_access()[model] with group_id False
+      and the operation in ir_access.IN_SELECTION, evaluating string domains
+      with ir.access._eval_context().
+    source:
+      - https://github.com/odoo/odoo/blob/20.0/odoo/orm/models.py  # def _access_domain
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/ir_access.py  # _get_all_access, _eval_context, IN_SELECTION
+
+  - id: group-user-regular-implied
+    area: security
+    severity: medium
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py'
+    detect: "implied_ids\\)|assertFalse\\([^)]*implied_ids"
+    fix: |
+      res.groups._apply_group_regular() links every non-light group to
+      base.group_user_regular (a privilege-tier marker; it implies nothing).
+      Checks that a module's group "implies nothing" now see it: exclude
+      env.ref('base.group_user_regular') (and assert the marker itself has no
+      implied_ids) rather than dropping the check.
+    source:
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/res_groups.py  # _apply_group_regular
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/security/base_groups.xml  # group_user_regular
 
 validation:
   must_not_exist:

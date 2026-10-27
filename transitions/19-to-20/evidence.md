@@ -25,6 +25,14 @@ ThaiACC Odoo 20 work and the OCA-bridge migrations below.
 | `partner-company-name-removed` | verified — private module migration, commit `53bd2b1` (partner form inherit referenced the removed field / button; removed) |
 | `stock-move-uom-renamed` | verified — private module migration, commit `461968e` (stock.move `product_uom` → `uom_id`, install passed after) and commit `a847cf8` (second module). A log attributed this to 18→19; source shows `product_uom` still on 19.0 `stock.move` |
 | `pricelist-compute-price-renamed` | verified — private module migration, commit `89b0da0` (`percentage` + `percent_price` → `discount` + `price_discount`) |
+| `product-tracking-none-removed` | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `7b6b6ab` (fixture create with `tracking: 'none'` failed install; reservation guard `tracking != 'none'` refused every product) |
+| `purchase-prepare-picking-removed` | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `7b6b6ab` (PO receipts lost their center: override never called; moved to `stock.move._get_new_picking_values`, test `test_receipt_rule_explicit_membership`) |
+| `public-read-group-new-signature` | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `a82359a` (portal RPC `read_group(domain, fields, groupby)` → "Aggregate method is mandatory"; `formatted_read_group`) |
+| `registry-clear-cache-removed` | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `7b6b6ab` (`AttributeError: 'Registry' object has no attribute 'clear_cache'` at install; `env.transaction.invalidate_ormcache()` before commit) |
+| `ir-rule-compute-domain-removed` | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `3902973` (incident reference on POs used `ir.rule._compute_domain`; restriction rows of `ir.access`) |
+| `group-user-regular-implied` | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `7b6b6ab` (two "grant implies nothing" tests saw `base.group_user_regular`) |
+| `odoo-http-package-split` (`root`) | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `386351a` (`ImportError: cannot import name 'root' from 'odoo.http'` in every live-harness worker; `session_store()`) |
+| `stock-scrap-return-wizard-removed` (scrap authority) | verified — public module `monthop-gmail/odoo-addons` `spare_parts_hub` (PR #2, branch `20.0-mig-sph`), commit `3902973` (authority override moved from `stock.scrap.action_validate/do_scrap` to `stock.move.action_scrap/_action_scrap/write(state=done)`; scrap moves start confirmed/assigned, not draft) |
 
 ## Cross-references
 
