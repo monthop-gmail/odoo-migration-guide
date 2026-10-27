@@ -1,0 +1,3 @@
+# Odoo 15→16 migration rules (machine-readable)
+# Schema: transitions/19-to-20/migration-rules.yaml + changed_in, confidence, files, source.
+rules: []
