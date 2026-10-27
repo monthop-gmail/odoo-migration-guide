@@ -23,6 +23,8 @@ ThaiACC Odoo 20 work and the OCA-bridge migrations below.
 | `default-website-xmlid` | verified — private module migration, commit `439ce98` (`External ID not found` → `base.default_website`) |
 | `toggle-active-removed` | verified — private module migration, commit `40b70b3` (archive button in views failed install; replaced by `action_archive` / `action_unarchive`) |
 | `partner-company-name-removed` | verified — private module migration, commit `53bd2b1` (partner form inherit referenced the removed field / button; removed) |
+| `stock-move-uom-renamed` | verified — private module migration, commit `461968e` (stock.move `product_uom` → `uom_id`, install passed after) and commit `a847cf8` (second module). A log attributed this to 18→19; source shows `product_uom` still on 19.0 `stock.move` |
+| `pricelist-compute-price-renamed` | verified — private module migration, commit `89b0da0` (`percentage` + `percent_price` → `discount` + `price_discount`) |
 
 ## Cross-references
 

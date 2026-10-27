@@ -329,6 +329,47 @@ rules:
       - https://github.com/odoo/odoo/blob/19.0/odoo/addons/base/models/res_partner.py  # company_name, def create_company
       - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/res_partner.py  # neither present
 
+  - id: stock-move-uom-renamed
+    area: stock
+    severity: critical
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: '\bproduct_uom\b'
+    fix: |
+      stock.move.product_uom -> uom_id (also in create vals, domains,
+      related/depends paths, view xpaths). stock.move.line.product_uom_id
+      -> uom_id as well (source-only). Unknown field errors at install or
+      KeyError in vals otherwise. On 19.0 both still had the old names.
+    false_positives:
+      - "product_uom on other models; product_uom_id on sale.order.line (renamed in 18-to-19) stays"
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/stock/models/stock_move.py  # product_uom
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_move.py  # uom_id
+      - https://github.com/odoo/odoo/blob/20.0/addons/stock/models/stock_move_line.py  # uom_id
+
+  - id: pricelist-compute-price-renamed
+    area: product
+    severity: high
+    auto_fix: false
+    changed_in: "20.0"
+    confidence: verified
+    files: '*.py,*.xml'
+    detect: "\\bpercent_price\\b|compute_price[^\\n]*['\">](percentage|formula)['\"<]"
+    fix: |
+      product.pricelist.item compute_price selection is now
+      fixed / discount / markup (19.0: fixed / percentage / formula).
+      'percentage' + percent_price -> 'discount' + price_discount (same
+      math: % off the base price). 'formula' is gone: 'discount' and
+      'markup' both keep base, price_surcharge, price_round and the
+      margins; price_markup is the inverse of price_discount. Review
+      formula items by hand. Data XML with the old values fails install
+      (invalid selection value).
+    source:
+      - https://github.com/odoo/odoo/blob/19.0/addons/product/models/product_pricelist_item.py  # percentage / formula, percent_price
+      - https://github.com/odoo/odoo/blob/20.0/addons/product/models/product_pricelist_item.py  # discount / markup, price_discount
+
 validation:
   must_not_exist:
     - "security/ir.model.access.csv"
