@@ -17,6 +17,7 @@ October 2026). `changed_in` was re-checked on odoo/odoo branches 17.0/18.0.
 | `check-access-rights-deprecated` | source-only | 18.0 `odoo/models.py` warning; A's log (Fix 5 notes) lists these warnings as remaining |
 | `ir-cron-numbercall-doall-removed` | source-only | private module migration, commit `bd16a1c` (Migration B, 17→18 data pass); 17.0 vs 18.0 `ir_cron.py` |
 | `rpc-service-to-function` | verified | A: commit `11dccf9` — website JS failed to load on 18.0; RPC calls moved to `rpc` from `@web/core/network/rpc` with the ES-module conversion (log Fix 5) |
+| `http-routing-slug-moved` | verified | private module migration, commit `ea661b6` (website controllers/models imported `slug` from `http_routing.models.ir_http`, which 18.0 no longer defines; replaced by `ir.http._slug`) |
 
 ## Corrections to the old placeholder
 

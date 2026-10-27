@@ -195,3 +195,64 @@ rules:
       - https://github.com/odoo/odoo/blob/15.0/addons/product/models/product_template.py  # pricelist_id = fields.Many2one(...)
       - https://github.com/odoo/odoo/blob/16.0/addons/product/models/product_template.py  # absent
 
+
+  - id: account-move-get-default-journal-removed
+    area: account
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: verified
+    files: '*.py'
+    detect: '\._get_default_journal\(|_search_default_journal\(\s*\w'
+    fix: |
+      account.move._get_default_journal() is gone and
+      _search_default_journal() no longer takes journal_types: it is an
+      instance method that reads the record's own move_type/company (the
+      default_move_type context is not consulted). Build a draft move and ask
+      it: env['account.move'].with_company(c).new({'move_type': 'out_invoice'})
+      ._search_default_journal(). Or set journal_id explicitly.
+    false_positives:
+      - "account.bank.statement.line._get_default_journal (still exists on that model)"
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/addons/account/models/account_move.py  # def _search_default_journal(self, journal_types), def _get_default_journal
+      - https://github.com/odoo/odoo/blob/16.0/addons/account/models/account_move.py  # def _search_default_journal(self) only
+
+  - id: account-move-line-display-type-required
+    area: account
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: verified
+    files: '*.py'
+    detect: '[''"]display_type[''"]\s*:\s*(False|None|line\.display_type|\w+\.display_type)\b'
+    fix: |
+      account.move.line.display_type is required (computed, stored,
+      precompute) since 16.0; 15.0 used False for ordinary product lines.
+      Writing False/None, or copying a sale line's display_type (False on
+      product lines), raises NotNullViolation. Pass 'product' for normal
+      lines (e.g. sol.display_type or 'product') or leave the key out so the
+      compute fills it.
+    false_positives:
+      - "display_type on sale/purchase lines, where False still means a product line"
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/addons/account/models/account_move.py  # display_type, no required
+      - https://github.com/odoo/odoo/blob/16.0/addons/account/models/account_move_line.py  # display_type required=True
+
+  - id: payment-acquirer-renamed-provider
+    area: payment
+    severity: critical
+    auto_fix: false
+    changed_in: "16.0"
+    confidence: verified
+    files: '*.py,*.xml,*.csv,*.js'
+    detect: 'payment\.acquirer|payment_acquirer|\bacquirer_id\b|_get_compatible_acquirers|\bacquirer_reference\b'
+    fix: |
+      payment.acquirer is renamed payment.provider: acquirer_id ->
+      provider_id on transactions/tokens/methods, the 'provider' selection
+      -> 'code' (provider_code on transactions), _get_compatible_acquirers
+      -> _get_compatible_providers, acquirer_reference ->
+      provider_reference. Update
+      models, ACL rows (model_payment_acquirer), xml-ids, views and JS.
+    source:
+      - https://github.com/odoo/odoo/blob/15.0/addons/payment/models/payment_acquirer.py  # _name = 'payment.acquirer'
+      - https://github.com/odoo/odoo/blob/16.0/addons/payment/models/payment_provider.py  # _name = 'payment.provider', code
