@@ -30,27 +30,37 @@ rules:
     severity: critical
     auto_fix: false
     changed_in: "16.0"
-    confidence: source-only
+    confidence: verified
     files: '*.py'
     detect: '\bfields_view_get\b'
     fix: |
-      BaseModel.fields_view_get() was removed. Override _get_view(view_id,
-      view_type, **options) to alter the arch (returns arch, view), or
-      get_views() for the combined payload. toolbar/submenu args are gone.
+      BaseModel.fields_view_get() was removed; an old override is never
+      called and fails silently (no error). Pick the hook by what the arch
+      change depends on:
+      - only on the view itself → _get_view(view_id, view_type, **options)
+        (returns arch, view). Its result is cached per view/lang/
+        *_view_ref context, NOT per user.
+      - on the user, groups or context (e.g. a seller's partner id in a
+        domain) → get_view(), which runs after the cache; changing
+        _get_view there leaks one user's arch to everyone.
+      - toolbar (Action/Print menus) → get_views(views, options), edit
+        result['views'][type]['toolbar']. toolbar/submenu args are gone.
     source:
       - https://github.com/odoo/odoo/blob/15.0/odoo/models.py   # def fields_view_get
       - https://github.com/odoo/odoo/blob/16.0/odoo/models.py   # def get_views / def _get_view
+      - https://github.com/odoo/odoo/blob/20.0/odoo/addons/base/models/ir_ui_view.py  # get_view after _get_view_cache; _get_view_cache_key has no user
 
   - id: inherited-view-groups-id-forbidden
     area: views
     severity: critical
     auto_fix: false
     changed_in: "16.0"
-    confidence: source-only
+    confidence: verified
     files: '*.xml'
-    detect: 'name=[''"]groups_id[''"]'
+    detect: 'name=[''"]groups?_ids?[''"]'
     fix: |
       An ir.ui.view record with inherit_id may not carry groups_id
+      (group_ids from 19.0 — a mechanical rename keeps the error)
       (ValidationError: "Inherited view cannot have 'Groups' define on the
       record"). Move the restriction into the arch as groups="..." on the
       added nodes. Primary (non-inherited) views, menus and actions may keep

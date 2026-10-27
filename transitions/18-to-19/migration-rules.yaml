@@ -1009,6 +1009,108 @@ rules:
       - "https://github.com/odoo/odoo/blob/18.0/addons/sale/models/sale_order.py  # action_confirm: message_subscribe([order.partner_id.id])"
       - "https://github.com/odoo/odoo/blob/19.0/addons/sale/models/sale_order.py  # no message_subscribe"
 
+  - id: sol-prepare-procurement-values-no-args
+    area: stock
+    severity: critical
+    changed_in: "19.0"
+    confidence: verified
+    file_types: ["*.py"]
+    detect:
+      - pattern: 'def _prepare_procurement_values\(self,\s*group_id|_prepare_procurement_values\(\s*group_id'
+    fix:
+      note: |
+        sale.order.line._prepare_procurement_values() takes no arguments
+        (procurement.group is gone). An override still declaring group_id
+        and passing it to super() raises "takes 1 positional argument but 2
+        were given" on every confirmation of an order with a storable
+        product. Use: def _prepare_procurement_values(self):
+        values = super()._prepare_procurement_values()
+    auto_fix: true
+    source:
+      - "https://github.com/odoo/odoo/blob/18.0/addons/sale_stock/models/sale_order_line.py  # (self, group_id=False)"
+      - "https://github.com/odoo/odoo/blob/19.0/addons/sale_stock/models/sale_order_line.py  # (self)"
+
+  - id: stock-move-group-id-picking-assignation
+    area: stock
+    severity: critical
+    changed_in: "19.0"
+    confidence: verified
+    file_types: ["*.py"]
+    detect:
+      - pattern: 'def _search_picking_for_assignation\b'
+        context: "Override copying the core search"
+      - pattern: '\(\s*[''"]group_id[''"]\s*,'
+        context: "Domain on stock.move/stock.picking group_id"
+    fix:
+      note: |
+        stock.move.group_id is gone (moves are grouped by reference_ids).
+        An override copying the core _search_picking_for_assignation with
+        ('group_id', '=', self.group_id.id) raises AttributeError when a
+        delivery is created. Do not copy the search: extend
+        _search_picking_for_assignation_domain() and AND the extra
+        condition: Domain.AND([super()._search_picking_for_assignation_domain(), [...]])
+        (from odoo.fields import Domain).
+    auto_fix: false
+    false_positives:
+      - "group_id fields on other models (custom fields, res.groups relations)"
+    source:
+      - "https://github.com/odoo/odoo/blob/18.0/addons/stock/models/stock_move.py  # group_id field"
+      - "https://github.com/odoo/odoo/blob/19.0/addons/stock/models/stock_move.py  # reference_ids, _search_picking_for_assignation_domain"
+
+  - id: website-sale-cart-update-removed
+    area: website_sale
+    severity: high
+    changed_in: "19.0"
+    confidence: verified
+    file_types: ["*.py"]
+    detect:
+      - pattern: '\b_cart_update\s*\('
+      - pattern: '\._cart_update\s*='
+        context: "Monkeypatch"
+      - pattern: 'website_sale_stock\.models\.sale_order import'
+    fix:
+      note: |
+        sale.order._cart_update() is gone (19.0: _cart_add /
+        _cart_update_line_quantity / _cart_update_order_line).
+        website_sale_stock already dropped its own _cart_update in 16.0, so
+        monkeypatches of it stopped running long before, without error.
+        For stock limits in the cart, override the hook the cart calls:
+        sale.order._get_free_qty(product) (19.0+; feeds
+        _get_cart_and_free_qty -> _verify_updated_quantity), e.g. reading
+        another warehouse via website._get_product_available_qty(product,
+        warehouse_id=...).
+    auto_fix: false
+    source:
+      - "https://github.com/odoo/odoo/blob/18.0/addons/website_sale/models/sale_order.py  # def _cart_update"
+      - "https://github.com/odoo/odoo/blob/19.0/addons/website_sale/models/sale_order.py  # _cart_update_line_quantity, _get_free_qty"
+      - "https://github.com/odoo/odoo/blob/16.0/addons/website_sale_stock/models/sale_order.py  # no _cart_update"
+
+  - id: relational-write-needs-comodel-read
+    area: security
+    severity: critical
+    changed_in: "19.0"
+    confidence: verified
+    file_types: ["*.py", "*.csv"]
+    detect:
+      - pattern: 'fields\.Many2many\([^)]*default='
+        context: "Only finds Many2many defaults; review every comodel written by restricted users"
+    fix:
+      note: |
+        Writing a Many2one (bypass_search_access) / Many2many / One2many
+        value now checks read access on the added comodel records, also
+        for field defaults: "AccessError: Failed to write field
+        <model>.<field> ... not allowed to access <comodel>". A default
+        linking records only some groups can read breaks create() for
+        everyone else (e.g. a default on every res.partner pointing at a
+        marketplace-only model: ordinary users could no longer create
+        contacts or users). Grant read on the comodel to the groups that
+        create the record, or restrict the default.
+    auto_fix: false
+    source:
+      - "https://github.com/odoo/odoo/blob/18.0/odoo/fields.py  # no comodel read check on write"
+      - "https://github.com/odoo/odoo/blob/19.0/odoo/orm/fields_relational.py  # check comodel access of added records / Failed to write field"
+
+
 version_bump:
   manifest:
     detect: 'version.*18\.0\.'

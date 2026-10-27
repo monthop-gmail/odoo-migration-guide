@@ -15,12 +15,13 @@ rules:
     changed_in: "18.0"
     confidence: source-only
     files: '*.xml,*.py,*.js'
-    detect: '<tree[\s>/]|</tree>|view_mode[^\n]*\btree\b|//tree\b'
+    detect: '<tree[\s>/]|</tree>|view_mode[^\n]*\btree\b|//tree\b|tree_view_ref'
     fix: |
       The view type 'tree' is now 'list': <tree> → <list> (arch and
       embedded one2many views), view_mode "tree,form" → "list,form" (XML
       and Python action dicts), xpath //tree → //list, view type 'tree' in
-      code → 'list'.
+      code → 'list', context key tree_view_ref → list_view_ref (the client
+      reads <type>_view_ref, so tree_view_ref is ignored without error).
     source:
       - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_ui_view.py  # type ('tree', 'Tree')
       - https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/models/ir_ui_view.py  # type ('list', 'List')
@@ -168,3 +169,25 @@ rules:
     source:
       - https://github.com/odoo/odoo/blob/17.0/addons/http_routing/models/ir_http.py  # def slug / unslug (module level)
       - https://github.com/odoo/odoo/blob/18.0/addons/http_routing/models/ir_http.py  # IrHttp._slug / _unslug / _unslug_url
+
+  - id: view-domain-active-id
+    area: views
+    severity: critical
+    auto_fix: false
+    changed_in: "18.0"
+    confidence: verified
+    files: '*.xml'
+    detect: 'domain=[^>]*\bactive_id\b'
+    fix: |
+      Expressions in a view arch (domain, invisible, readonly, ...) may only
+      use fields of the record and the documented evaluation context; the
+      view validator treats other names as fields. active_id in a field's
+      domain fails install with "Access Rights Inconsistency ... depend on
+      the field active_id". Inside a form, use the record's own field (id
+      for the current record, e.g. [('product_tmpl_id', '=', id)]). Action
+      contexts/domains are not affected.
+    false_positives:
+      - "active_id in ir.actions.act_window context/domain fields (evaluated by the action, not the view)"
+    source:
+      - https://github.com/odoo/odoo/blob/17.0/odoo/addons/base/models/ir_ui_view.py  # no "Access Rights Inconsistency" check
+      - https://github.com/odoo/odoo/blob/18.0/odoo/addons/base/models/ir_ui_view.py  # "Access Rights Inconsistency" field dependency check
