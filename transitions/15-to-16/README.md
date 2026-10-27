@@ -4,7 +4,7 @@ Breaking changes for modules moving from 15.0 to 16.0, each checked against
 odoo/odoo source. Rules: [`migration-rules.yaml`](migration-rules.yaml);
 proof: [evidence.md](evidence.md); PR checklist: [CHECKLIST.md](CHECKLIST.md).
 
-> Status: seed (11 rules, 3 verified). Grown from two real 15.0 ports.
+> Status: seed (14 rules, 8 verified). Grown from two real 15.0 ports.
 
 ## Highlights
 
